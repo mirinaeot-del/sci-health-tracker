@@ -225,37 +225,22 @@
           <!-- 운동 기록 -->
           <div class="card">
             <h2 class="card-title"><span aria-hidden="true">💪</span> 오늘의 운동</h2>
-            <p class="card-help">오늘 한 운동을 추가해 주세요.</p>
-            <div id="exerciseList" class="exercise-list"></div>
-            <div class="exercise-input">
-              <div class="exercise-input-row">
-                <select id="exType">
-                  <option value="">운동 종류 선택</option>
-                  <option value="상지 근력운동">상지 근력운동</option>
-                  <option value="관절 가동범위(ROM) 운동">관절 가동범위(ROM) 운동</option>
-                  <option value="스트레칭">스트레칭</option>
-                  <option value="휠체어 이동/유산소">휠체어 이동/유산소</option>
-                  <option value="기립/체중부하 훈련">기립/체중부하 훈련</option>
-                  <option value="호흡 운동">호흡 운동</option>
-                  <option value="기타">기타</option>
-                </select>
-              </div>
-              <div class="exercise-input-row two">
-                <div>
-                  <label for="exMinutes">시간(분)</label>
-                  <input type="number" id="exMinutes" inputmode="numeric" min="0" placeholder="20" />
-                </div>
-                <div>
-                  <label for="exIntensity">강도</label>
-                  <select id="exIntensity">
-                    <option value="가벼움">가벼움</option>
-                    <option value="보통" selected>보통</option>
-                    <option value="힘듦">힘듦</option>
-                  </select>
-                </div>
-              </div>
-              <button type="button" class="btn-add-exercise" id="addExerciseBtn">＋ 운동 추가</button>
+            <p class="card-help">카테고리를 고르고 종목을 눌러 추가하세요. 여러 개 선택할 수 있어요.</p>
+            <div class="picker">
+              <div class="picker-cats" id="exCats"></div>
+              <div class="picker-items" id="exItems"></div>
             </div>
+            <div id="exerciseList" class="picker-list"></div>
+          </div>
+
+          <!-- 활동(훈련) 기록 -->
+          <div class="card">
+            <h2 class="card-title"><span aria-hidden="true">🗓️</span> 오늘의 활동</h2>
+            <p class="card-help">일상 활동과 훈련을 눌러 추가하세요. (예: TV보기, 전화하기, 걷기)</p>
+            <div class="picker">
+              <div class="picker-items single" id="actItems"></div>
+            </div>
+            <div id="activityList" class="picker-list"></div>
           </div>
 
           <!-- 메모 -->

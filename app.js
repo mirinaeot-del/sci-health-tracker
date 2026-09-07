@@ -49,6 +49,43 @@
   var MOOD_FACES = { 1: "😣", 2: "😕", 3: "😐", 4: "🙂", 5: "😄" };
   var SKIN_LABELS = { good: "피부 이상 없음", redness: "피부 빨감", wound: "상처 있음" };
 
+  /* 운동 카탈로그: 카테고리 → 종목 (SCI 참여자 재활 중심) */
+  var EXERCISE_CATALOG = [
+    { id: "aerobic", label: "유산소", icon: "🏃",
+      items: ["휠체어 유산소", "핸드 사이클", "트레드밀 보행", "실내 자전거", "수영/아쿠아"] },
+    { id: "strength", label: "근력", icon: "🏋️",
+      items: ["상지 근력운동", "체간 근력운동", "하지 근력운동", "저항밴드 운동", "매트 운동"] },
+    { id: "flexibility", label: "유연성·밸런스", icon: "🤸",
+      items: ["스트레칭", "관절 가동범위(ROM)", "앉기 균형 훈련", "요가", "필라테스"] },
+    { id: "rehab", label: "재활훈련", icon: "🦿",
+      items: ["기립/체중부하 훈련", "트랜스퍼 훈련", "보행 훈련", "호흡 운동", "전기자극 치료(FES)"] },
+    { id: "etc", label: "기타", icon: "✨",
+      items: ["산책", "레크리에이션 스포츠", "기타"] }
+  ];
+  var EX_INTENSITIES = ["가벼움", "보통", "힘듦"];
+
+  /* 활동(훈련) 종목: 일상 활동 */
+  var ACTIVITY_ITEMS = [
+    { name: "TV보기", icon: "📺" }, { name: "전화하기", icon: "📞" },
+    { name: "걷기", icon: "🚶" }, { name: "독서", icon: "📖" },
+    { name: "식사하기", icon: "🍚" }, { name: "컴퓨터/휴대폰", icon: "💻" },
+    { name: "대화/사회활동", icon: "💬" }, { name: "외출", icon: "🏞️" },
+    { name: "집안일", icon: "🧹" }, { name: "취미활동", icon: "🎨" },
+    { name: "휴식", icon: "🛋️" }, { name: "기타", icon: "✨" }
+  ];
+
+  /* 종목명 → 카테고리 라벨/아이콘 조회 */
+  function exerciseCat(name) {
+    for (var i = 0; i < EXERCISE_CATALOG.length; i++) {
+      if (EXERCISE_CATALOG[i].items.indexOf(name) >= 0) return EXERCISE_CATALOG[i];
+    }
+    return EXERCISE_CATALOG[EXERCISE_CATALOG.length - 1]; // 기타
+  }
+  function activityIcon(name) {
+    var f = ACTIVITY_ITEMS.filter(function (a) { return a.name === name; })[0];
+    return f ? f.icon : "✨";
+  }
+
   /* =========================================================
      뷰 라우팅
      ========================================================= */
@@ -137,6 +174,9 @@
     var totalExMin = records.reduce(function (s, r) {
       return s + (r.exercises || []).reduce(function (a, e) { return a + (e.minutes || 0); }, 0);
     }, 0);
+    var totalActMin = records.reduce(function (s, r) {
+      return s + (r.activities || []).reduce(function (a, x) { return a + (x.minutes || 0); }, 0);
+    }, 0);
     var moods = last7.filter(function (r) { return r.mood != null; }).map(function (r) { return r.mood; });
     var avgMood = moods.length ? Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length) : null;
 
@@ -144,6 +184,7 @@
     cards.push(dashCard("📝", records.length, "총 기록 수", "일", "blue"));
     cards.push(dashCard("💪", exDays, "최근 7일 운동", "일", "green"));
     cards.push(dashCard("⏱️", totalExMin, "누적 운동 시간", "분", "purple"));
+    cards.push(dashCard("🗓️", totalActMin, "누적 활동 시간", "분", "teal"));
     cards.push(dashCard("🙂", avgMood != null ? MOOD_FACES[avgMood] : "–", "최근 컨디션", "", "amber"));
 
     // 기능평가 요약
@@ -494,11 +535,16 @@
   /* =========================================================
      기록하기 (기존 기능)
      ========================================================= */
-  var draft = { mood: null, pain: 0, spasticity: 0, urine: 0, bowel: 0, skin: null, exercises: [] };
+  var draft = { mood: null, pain: 0, spasticity: 0, urine: 0, bowel: 0, skin: null, exercises: [], activities: [] };
+  var currentExCat = EXERCISE_CATALOG[0].id; // 현재 선택된 운동 카테고리
 
   function initRecord() {
     $("#recordDate").value = todayStr();
     $("#recordDate").addEventListener("change", loadDraftForDate);
+
+    renderExerciseCats();
+    renderExerciseItems();
+    renderActivityItems();
 
     $all(".mood-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -524,8 +570,67 @@
         draft.skin = btn.getAttribute("data-value"); updateSkinUI();
       });
     });
-    $("#addExerciseBtn").addEventListener("click", addExercise);
     $("#saveBtn").addEventListener("click", saveRecord);
+  }
+
+  /* ---- 운동: 카테고리/종목 버튼 ---- */
+  function renderExerciseCats() {
+    var box = $("#exCats");
+    box.innerHTML = "";
+    EXERCISE_CATALOG.forEach(function (cat) {
+      var b = el("button", "cat-btn" + (cat.id === currentExCat ? " selected" : ""),
+        '<span aria-hidden="true">' + cat.icon + '</span> ' + cat.label);
+      b.type = "button";
+      b.addEventListener("click", function () {
+        currentExCat = cat.id;
+        renderExerciseCats();
+        renderExerciseItems();
+      });
+      box.appendChild(b);
+    });
+  }
+  function renderExerciseItems() {
+    var box = $("#exItems");
+    box.innerHTML = "";
+    var cat = EXERCISE_CATALOG.filter(function (c) { return c.id === currentExCat; })[0];
+    cat.items.forEach(function (name) {
+      var added = draft.exercises.some(function (e) { return e.type === name; });
+      var b = el("button", "item-btn" + (added ? " added" : ""),
+        (added ? "✓ " : "＋ ") + escapeHtml(name));
+      b.type = "button";
+      b.addEventListener("click", function () {
+        if (added) { // 이미 추가됨 → 토글 해제
+          draft.exercises = draft.exercises.filter(function (e) { return e.type !== name; });
+        } else {
+          draft.exercises.push({ type: name, minutes: 30, intensity: "보통" });
+        }
+        renderExerciseItems();
+        renderExerciseList();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  /* ---- 활동: 종목 버튼 ---- */
+  function renderActivityItems() {
+    var box = $("#actItems");
+    box.innerHTML = "";
+    ACTIVITY_ITEMS.forEach(function (act) {
+      var added = draft.activities.some(function (a) { return a.name === act.name; });
+      var b = el("button", "item-btn" + (added ? " added" : ""),
+        '<span aria-hidden="true">' + act.icon + '</span> ' + (added ? "✓ " : "") + escapeHtml(act.name));
+      b.type = "button";
+      b.addEventListener("click", function () {
+        if (added) {
+          draft.activities = draft.activities.filter(function (a) { return a.name !== act.name; });
+        } else {
+          draft.activities.push({ name: act.name, minutes: 30 });
+        }
+        renderActivityItems();
+        renderActivityList();
+      });
+      box.appendChild(b);
+    });
   }
 
   function updateMoodUI() {
@@ -538,29 +643,75 @@
       b.classList.toggle("selected", b.getAttribute("data-value") === draft.skin);
     });
   }
-  function addExercise() {
-    var type = $("#exType").value;
-    if (!type) { toast("운동 종류를 선택해주세요"); return; }
-    var mins = $("#exMinutes").value;
-    draft.exercises.push({ type: type, minutes: mins ? Number(mins) : null, intensity: $("#exIntensity").value });
-    $("#exType").value = ""; $("#exMinutes").value = ""; $("#exIntensity").value = "보통";
-    renderExerciseList();
-  }
+  /* 추가된 운동 목록 (인라인 시간/강도 편집) */
   function renderExerciseList() {
     var list = $("#exerciseList");
     list.innerHTML = "";
+    if (!draft.exercises.length) {
+      list.appendChild(el("div", "picker-empty", "👆 위에서 종목을 선택해 추가하세요"));
+      return;
+    }
     draft.exercises.forEach(function (ex, i) {
-      var meta = [];
-      if (ex.minutes != null) meta.push(ex.minutes + "분");
-      if (ex.intensity) meta.push(ex.intensity);
-      var item = el("div", "exercise-item",
-        '<div class="exercise-info"><span class="exercise-name">' + escapeHtml(ex.type) +
-        '</span><span class="exercise-meta">' + meta.join(" · ") + '</span></div>');
-      var rm = el("button", "exercise-remove", "×");
-      rm.type = "button";
-      rm.addEventListener("click", function () { draft.exercises.splice(i, 1); renderExerciseList(); });
-      item.appendChild(rm);
-      list.appendChild(item);
+      var cat = exerciseCat(ex.type);
+      var row = el("div", "picker-row");
+      row.innerHTML =
+        '<div class="pr-info"><span class="pr-cat">' + cat.icon + ' ' + cat.label + '</span>' +
+        '<span class="pr-name">' + escapeHtml(ex.type) + '</span></div>';
+
+      var ctrl = el("div", "pr-ctrl");
+      // 시간(분)
+      var min = el("input", "pr-min");
+      min.type = "number"; min.min = "0"; min.inputMode = "numeric";
+      min.value = ex.minutes != null ? ex.minutes : "";
+      min.addEventListener("input", function () { ex.minutes = min.value ? Number(min.value) : null; });
+      var minUnit = el("span", "pr-unit", "분");
+      // 강도
+      var sel = el("select", "pr-sel");
+      EX_INTENSITIES.forEach(function (v) {
+        var o = el("option", null, v); o.value = v;
+        if (v === ex.intensity) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.addEventListener("change", function () { ex.intensity = sel.value; });
+      // 삭제
+      var rm = el("button", "pr-remove", "×"); rm.type = "button";
+      rm.addEventListener("click", function () {
+        draft.exercises.splice(i, 1);
+        renderExerciseItems(); renderExerciseList();
+      });
+
+      ctrl.appendChild(min); ctrl.appendChild(minUnit); ctrl.appendChild(sel); ctrl.appendChild(rm);
+      row.appendChild(ctrl);
+      list.appendChild(row);
+    });
+  }
+
+  /* 추가된 활동 목록 (인라인 시간 편집) */
+  function renderActivityList() {
+    var list = $("#activityList");
+    list.innerHTML = "";
+    if (!draft.activities.length) {
+      list.appendChild(el("div", "picker-empty", "👆 위에서 활동을 선택해 추가하세요"));
+      return;
+    }
+    draft.activities.forEach(function (act, i) {
+      var row = el("div", "picker-row");
+      row.innerHTML =
+        '<div class="pr-info"><span class="pr-name">' + activityIcon(act.name) + ' ' + escapeHtml(act.name) + '</span></div>';
+      var ctrl = el("div", "pr-ctrl");
+      var min = el("input", "pr-min");
+      min.type = "number"; min.min = "0"; min.inputMode = "numeric";
+      min.value = act.minutes != null ? act.minutes : "";
+      min.addEventListener("input", function () { act.minutes = min.value ? Number(min.value) : null; });
+      var minUnit = el("span", "pr-unit", "분");
+      var rm = el("button", "pr-remove", "×"); rm.type = "button";
+      rm.addEventListener("click", function () {
+        draft.activities.splice(i, 1);
+        renderActivityItems(); renderActivityList();
+      });
+      ctrl.appendChild(min); ctrl.appendChild(minUnit); ctrl.appendChild(rm);
+      row.appendChild(ctrl);
+      list.appendChild(row);
     });
   }
   function saveRecord() {
@@ -572,7 +723,8 @@
         bpSys: numOrNull("#bpSys"), bpDia: numOrNull("#bpDia"),
         pulse: numOrNull("#pulse"), temp: numOrNull("#temp")
       },
-      exercises: draft.exercises.slice(), memo: $("#memo").value.trim()
+      exercises: draft.exercises.slice(), activities: draft.activities.slice(),
+      memo: $("#memo").value.trim()
     });
     $("#saveHint").textContent = "✓ " + fmtDate(date) + " 기록이 저장되었어요.";
     toast("저장 완료!");
@@ -582,12 +734,13 @@
   function loadDraftForDate() {
     var date = $("#recordDate").value || todayStr();
     var r = Store.getRecord(date);
-    draft = { mood: null, pain: 0, spasticity: 0, urine: 0, bowel: 0, skin: null, exercises: [] };
+    draft = { mood: null, pain: 0, spasticity: 0, urine: 0, bowel: 0, skin: null, exercises: [], activities: [] };
     if (r) {
       draft.mood = r.mood != null ? r.mood : null;
       draft.pain = r.pain || 0; draft.spasticity = r.spasticity || 0;
       draft.urine = r.urine || 0; draft.bowel = r.bowel || 0;
       draft.skin = r.skin || null; draft.exercises = (r.exercises || []).slice();
+      draft.activities = (r.activities || []).slice();
       var v = r.vitals || {};
       $("#bpSys").value = v.bpSys != null ? v.bpSys : "";
       $("#bpDia").value = v.bpDia != null ? v.bpDia : "";
@@ -602,7 +755,9 @@
     $("#painLevel").value = draft.pain; $("#painValue").textContent = draft.pain;
     $("#spasticity").value = draft.spasticity; $("#spasticityValue").textContent = draft.spasticity;
     $("#urineCount").textContent = draft.urine; $("#bowelCount").textContent = draft.bowel;
-    updateMoodUI(); updateSkinUI(); renderExerciseList();
+    updateMoodUI(); updateSkinUI();
+    renderExerciseItems(); renderExerciseList();
+    renderActivityItems(); renderActivityList();
   }
 
   /* =========================================================
@@ -626,6 +781,10 @@
       if (r.exercises && r.exercises.length) {
         var m = r.exercises.reduce(function (s, e) { return s + (e.minutes || 0); }, 0);
         tags.push('<span class="tag exercise">💪 운동 ' + r.exercises.length + '개' + (m ? ' · ' + m + '분' : '') + '</span>');
+      }
+      if (r.activities && r.activities.length) {
+        var am = r.activities.reduce(function (s, a) { return s + (a.minutes || 0); }, 0);
+        tags.push('<span class="tag activity">🗓️ 활동 ' + r.activities.length + '개' + (am ? ' · ' + am + '분' : '') + '</span>');
       }
       if (r.vitals && r.vitals.bpSys) tags.push('<span class="tag">혈압 ' + r.vitals.bpSys + '/' + (r.vitals.bpDia || "-") + '</span>');
 
@@ -671,20 +830,25 @@
     var list = Store.listRecords().slice().reverse();
     if (!list.length) { toast("내보낼 기록이 없어요"); return; }
     var headers = ["날짜", "컨디션(1-5)", "통증(0-10)", "경직(0-10)", "소변횟수", "배변횟수",
-      "피부상태", "혈압수축기", "혈압이완기", "맥박", "체온", "운동", "운동시간(분)", "메모"];
+      "피부상태", "혈압수축기", "혈압이완기", "맥박", "체온",
+      "운동", "운동시간(분)", "활동", "활동시간(분)", "메모"];
     var rows = [headers];
     list.forEach(function (r) {
       var exNames = (r.exercises || []).map(function (e) {
         return e.type + (e.minutes ? "(" + e.minutes + "분/" + e.intensity + ")" : "");
       }).join(" | ");
       var totMin = (r.exercises || []).reduce(function (s, e) { return s + (e.minutes || 0); }, 0);
+      var actNames = (r.activities || []).map(function (a) {
+        return a.name + (a.minutes ? "(" + a.minutes + "분)" : "");
+      }).join(" | ");
+      var actMin = (r.activities || []).reduce(function (s, a) { return s + (a.minutes || 0); }, 0);
       var v = r.vitals || {};
       rows.push([r.date, r.mood != null ? r.mood : "", r.pain != null ? r.pain : "",
         r.spasticity != null ? r.spasticity : "", r.urine != null ? r.urine : "",
         r.bowel != null ? r.bowel : "", r.skin ? SKIN_LABELS[r.skin] : "",
         v.bpSys != null ? v.bpSys : "", v.bpDia != null ? v.bpDia : "",
         v.pulse != null ? v.pulse : "", v.temp != null ? v.temp : "",
-        exNames, totMin || "", (r.memo || "").replace(/\n/g, " ")]);
+        exNames, totMin || "", actNames, actMin || "", (r.memo || "").replace(/\n/g, " ")]);
     });
     var csv = rows.map(function (row) {
       return row.map(function (c) {
