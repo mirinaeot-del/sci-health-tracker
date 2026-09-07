@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Kiro
+.kiro/
+
+# Logs
+*.log
+
+# Node (미사용이지만 혹시 모를 대비)
+node_modules/
