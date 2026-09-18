@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>재활 프로그램 | 척수손상 재활 플랫폼</title>
+  <meta name="description" content="의료·물리치료·작업치료·간호·사회복지·휠체어·보조공학 등 직종별 재활 프로그램을 평가→치료→목표→활동→퇴원 흐름으로 안내합니다." />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <main id="main">
+    <div class="page-head">
+      <div class="container">
+        <p class="breadcrumb"><a href="index.html">홈</a> › 재활 프로그램</p>
+        <h1>재활 프로그램</h1>
+        <p class="section-sub">직종을 선택하면 <strong>평가 → 치료 → 목표 → 활동 → 퇴원</strong> 흐름으로 프로그램을 안내합니다.</p>
+      </div>
+    </div>
+
+    <section style="padding-top:8px;">
+      <div class="container">
+        <div class="grid grid-4" id="prog-grid" role="list"></div>
+        <div id="prog-detail" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/app.js"></script>
+  <script>
+    (async function () {
+      SCIChrome.init("programs.html");
+      const programs = await SCIStore.getPrograms();
+      const grid = document.getElementById("prog-grid");
+      const detail = document.getElementById("prog-detail");
+
+      const FLOW = [
+        ["assessment", "평가"], ["treatment", "치료"], ["goal", "목표"],
+        ["activity", "활동"], ["discharge", "퇴원"],
+      ];
+
+      function renderDetail(p) {
+        detail.innerHTML = "";
+        const cols = FLOW.map(([key, label]) =>
+          el("div", { class: "col" }, [
+            el("h4", {}, label),
+            el("ul", {}, (p.flow[key] || []).map((i) => el("li", {}, i))),
+          ])
+        );
+        detail.appendChild(el("div", { class: "stage-detail" }, [
+          el("h2", { style: "margin-top:0;" }, `${p.icon} ${p.label}`),
+          el("p", {}, p.summary),
+          el("div", { class: "flow" }, cols),
+        ]));
+        detail.scrollIntoView({ block: "nearest" });
+      }
+
+      programs.forEach((p, idx) => {
+        grid.appendChild(el("button", {
+          class: "tile", type: "button", role: "listitem", id: `prog-${p.id}`,
+          onclick: () => {
+            grid.querySelectorAll(".tile").forEach((b) => b.style.borderColor = "");
+            grid.querySelector(`#prog-${p.id}`).style.borderColor = "var(--color-primary)";
+            renderDetail(p);
+          },
+        }, [
+          el("span", { class: "emoji", "aria-hidden": "true" }, p.icon),
+          el("strong", {}, p.label),
+          el("span", { class: "desc" }, p.summary),
+        ]));
+        if (idx === 0) { /* 첫 항목 기본 표시 */ }
+      });
+
+      if (programs[0]) {
+        grid.querySelector(`#prog-${programs[0].id}`).style.borderColor = "var(--color-primary)";
+        renderDetail(programs[0]);
+      }
+    })();
+  </script>
+</body>
+</html>
