@@ -165,9 +165,15 @@
     if (!records.length && !surveys.length) {
       grid.innerHTML = "";
       empty.hidden = false;
+      $("#growthCard").hidden = true;
+      $("#alertsCard").hidden = true;
       return;
     }
     empty.hidden = true;
+
+    // 성장 점수 + 자가 알림
+    renderGrowthCard();
+    renderAlerts();
 
     // 통계 계산
     var last7 = records.slice(0, 7);
@@ -224,6 +230,46 @@
         '<div class="dash-label">' + label + '</div>' +
       '</div>' +
     '</div>';
+  }
+
+  /* 성장 점수 카드 */
+  function renderGrowthCard() {
+    var g = calcGrowthScore();
+    var lv = growthLevel(g.total);
+    var card = $("#growthCard");
+    card.hidden = false;
+    card.innerHTML =
+      '<div class="growth-main">' +
+        '<div class="growth-left">' +
+          '<div class="growth-level">' + lv.emoji + ' ' + lv.name + '</div>' +
+          '<div class="growth-score-num">' + g.total.toLocaleString() + '<span>점</span></div>' +
+          '<div class="growth-sub">총 ' + g.days + '일 기록 · 최장 연속 ' + g.bestStreak + '일</div>' +
+        '</div>' +
+        '<div class="growth-break">' +
+          growthBreakItem("🙌 성실도", g.breakdown.base) +
+          growthBreakItem("🔥 꾸준함 보너스", g.breakdown.streak) +
+          growthBreakItem("📈 성장 가산", g.breakdown.growth) +
+        '</div>' +
+      '</div>';
+  }
+  function growthBreakItem(label, val) {
+    return '<div class="gb-item"><span class="gb-label">' + label + '</span>' +
+      '<span class="gb-val">+' + val.toLocaleString() + '</span></div>';
+  }
+
+  /* 자가 알림 렌더 */
+  function renderAlerts() {
+    var alerts = buildAlerts();
+    var card = $("#alertsCard");
+    var list = $("#alertsList");
+    card.hidden = false;
+    list.innerHTML = "";
+    alerts.forEach(function (a) {
+      list.appendChild(el("div", "alert-row " + a.level,
+        '<div class="alert-icon">' + a.icon + '</div>' +
+        '<div class="alert-body"><div class="alert-title">' + escapeHtml(a.title) + '</div>' +
+        '<div class="alert-desc">' + escapeHtml(a.desc) + '</div></div>'));
+    });
   }
 
   /* =========================================================
@@ -1102,6 +1148,111 @@
       else break;
     }
     return streak;
+  }
+
+  /* =========================================================
+     성장 점수 (참고 앱 산정식 반영)
+     - 기록한 날: +20 (성실도)
+     - 연속 보너스: 3일 연속부터 +5/일, 7일 이상 +10/일
+     - 성장 가산: 전날보다 운동(분) 증가 시 분당 +1 (일 최대 +30)
+     기록이 "있는 날"만 순회하여 계산 (미기록일 패널티는 스트릭에 반영)
+     ========================================================= */
+  function calcGrowthScore() {
+    var recs = Store.listRecords().slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }); // 과거→현재
+    if (!recs.length) return { total: 0, breakdown: { base: 0, streak: 0, growth: 0 }, days: 0, bestStreak: 0 };
+
+    var exMinOf = function (r) { return (r.exercises || []).reduce(function (s, e) { return s + (e.minutes || 0); }, 0); };
+    var base = 0, streakBonus = 0, growth = 0;
+    var run = 0, bestStreak = 0;
+    var prevDate = null, prevExMin = 0;
+
+    recs.forEach(function (r) {
+      base += 20;
+      // 연속 여부: 전 기록일이 '하루 전'인지
+      if (prevDate) {
+        var pd = new Date(prevDate), cur = new Date(r.date);
+        var diffDays = Math.round((cur - pd) / 86400000);
+        run = (diffDays === 1) ? run + 1 : 1;
+      } else { run = 1; }
+      bestStreak = Math.max(bestStreak, run);
+      // 연속 보너스 (연속 3일째부터)
+      if (run >= 7) streakBonus += 10;
+      else if (run >= 3) streakBonus += 5;
+      // 성장 가산 (연속일 때만 전날 대비 비교 의미)
+      var curEx = exMinOf(r);
+      if (prevDate) {
+        var inc = curEx - prevExMin;
+        if (inc > 0) growth += Math.min(inc, 30);
+      }
+      prevDate = r.date; prevExMin = curEx;
+    });
+
+    return {
+      total: base + streakBonus + growth,
+      breakdown: { base: base, streak: streakBonus, growth: growth },
+      days: recs.length,
+      bestStreak: bestStreak
+    };
+  }
+
+  /* 성장 점수를 레벨/등급으로 환산 (동기부여용) */
+  function growthLevel(score) {
+    if (score >= 1000) return { name: "최고 등급", emoji: "👑" };
+    if (score >= 500) return { name: "꾸준 마스터", emoji: "🏆" };
+    if (score >= 200) return { name: "성장 중", emoji: "🌟" };
+    if (score >= 50) return { name: "시작 단계", emoji: "🌱" };
+    return { name: "입문", emoji: "🐣" };
+  }
+
+  /* =========================================================
+     자가 알림 (오늘 확인할 사항) — 본인용
+     ========================================================= */
+  function buildAlerts() {
+    var alerts = [];
+    var recs = Store.listRecords(); // 최신순
+    var today = todayStr();
+
+    // 1) 오늘 기록 여부
+    var hasToday = recs.some(function (r) { return r.date === today; });
+    if (!hasToday) {
+      alerts.push({ level: "info", icon: "📝", title: "오늘 기록이 아직 없어요", desc: "오늘의 컨디션과 운동을 기록해 보세요." });
+    }
+
+    // 2) 최근 3일 통증 추세 (최근 기록 기준)
+    var recent = recs.slice(0, 3);
+    var highPain = recent.filter(function (r) { return r.pain != null && r.pain >= 6; });
+    if (highPain.length >= 2) {
+      alerts.push({ level: "warn", icon: "⚡", title: "통증이 높은 날이 이어지고 있어요", desc: "최근 통증 점수가 6 이상인 날이 " + highPain.length + "일 있어요. 무리하지 말고 담당 의료진과 상의해 보세요." });
+    } else if (recent[0] && recent[0].pain != null && recent[0].pain >= 8) {
+      alerts.push({ level: "warn", icon: "⚡", title: "오늘 통증이 심해요", desc: "통증 " + recent[0].pain + "점. 자세·휴식을 점검하고 필요 시 도움을 요청하세요." });
+    }
+
+    // 3) 욕창(피부) 이상
+    var skinIssue = recent.filter(function (r) { return r.skin && r.skin !== "good"; });
+    if (skinIssue.length) {
+      var latest = skinIssue[0];
+      alerts.push({ level: "danger", icon: "🩹", title: "피부 상태를 확인하세요", desc: SKIN_LABELS[latest.skin] + " (" + fmtDate(latest.date) + "). 압박 부위를 자주 바꾸고 상태를 관찰해 주세요." });
+    }
+
+    // 4) 기록 공백 (마지막 기록이 3일 이상 전)
+    if (recs.length) {
+      var lastDate = new Date(recs[0].date);
+      var gap = Math.round((new Date(today) - lastDate) / 86400000);
+      if (gap >= 3) {
+        alerts.push({ level: "info", icon: "📆", title: gap + "일째 기록이 없어요", desc: "꾸준한 기록이 재활 경과 파악에 도움이 돼요. 오늘 다시 시작해 볼까요?" });
+      }
+    }
+
+    // 5) 경직 높음
+    if (recent[0] && recent[0].spasticity != null && recent[0].spasticity >= 7) {
+      alerts.push({ level: "warn", icon: "🌀", title: "경직이 심한 편이에요", desc: "경직 " + recent[0].spasticity + "점. 스트레칭·자세 관리를 신경 써 주세요." });
+    }
+
+    // 긍정 메시지 (알림이 없을 때)
+    if (!alerts.length) {
+      alerts.push({ level: "good", icon: "✅", title: "특별히 주의할 점이 없어요", desc: "좋은 상태를 잘 유지하고 있어요. 오늘도 화이팅!" });
+    }
+    return alerts;
   }
 
   /* =========================================================

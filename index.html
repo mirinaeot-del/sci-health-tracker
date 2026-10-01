@@ -19,16 +19,26 @@
   <header class="topnav">
     <div class="topnav-inner">
       <div class="brand">
-        <img class="brand-mark" src="logo.svg" alt="" width="34" height="34" />
+        <svg class="brand-mark" viewBox="0 0 48 48" width="34" height="34" role="img" aria-label="건강 지킴이 로고">
+          <defs>
+            <linearGradient id="brandG" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#3b82f6"/>
+              <stop offset="1" stop-color="#2563eb"/>
+            </linearGradient>
+          </defs>
+          <rect x="3" y="3" width="42" height="42" rx="12" fill="url(#brandG)"/>
+          <path d="M24 36c-0.6 0-1.2-0.22-1.66-0.64C17.9 31.3 11.5 26.6 11.5 20.6c0-3.5 2.7-6.3 6.1-6.3 2.2 0 4.1 1.1 5.3 2.85l1.1 1.6 1.1-1.6c1.2-1.75 3.1-2.85 5.3-2.85 3.4 0 6.1 2.8 6.1 6.3 0 6-6.4 10.7-10.84 14.76-0.46 0.42-1.06 0.64-1.66 0.64z" fill="#ffffff"/>
+          <path d="M17.5 23h3.4l1.5-2.7 2.3 5 1.6-2.9h4.2" fill="none" stroke="#3b82f6" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
         <span class="brand-name">건강 지킴이</span>
       </div>
       <nav class="nav-menu" id="navMenu">
         <button class="nav-item active" data-view="dashboard"><span aria-hidden="true">📊</span> 대시보드</button>
         <button class="nav-item" data-view="monthly"><span aria-hidden="true">🗓️</span> 월별 분석</button>
-        <button class="nav-item" data-view="survey"><span aria-hidden="true">📋</span> 기능평가</button>
-        <button class="nav-item" data-view="analysis"><span aria-hidden="true">📈</span> 비교 분석</button>
         <button class="nav-item" data-view="record"><span aria-hidden="true">✏️</span> 기록하기</button>
         <button class="nav-item" data-view="history"><span aria-hidden="true">📖</span> 기록 목록</button>
+        <button class="nav-item" data-view="survey"><span aria-hidden="true">📋</span> 기능평가</button>
+        <button class="nav-item" data-view="analysis"><span aria-hidden="true">📈</span> 비교 분석</button>
       </nav>
       <div class="user-chip" id="userChip" title="내 정보">
         <span class="user-avatar" id="userAvatar">김</span>
@@ -44,6 +54,15 @@
       <div class="view-head">
         <h1 class="view-title"><span aria-hidden="true">📊</span> 대시보드</h1>
         <p class="view-sub" id="dashSub">나의 건강 통계</p>
+      </div>
+
+      <!-- 성장 점수 -->
+      <div class="card growth-card" id="growthCard" hidden></div>
+
+      <!-- 오늘 확인할 사항 (자가 알림) -->
+      <div class="card alerts-card" id="alertsCard" hidden>
+        <h2 class="card-title"><span aria-hidden="true">🔔</span> 오늘 확인할 사항</h2>
+        <div id="alertsList" class="alerts-list"></div>
       </div>
 
       <div class="dash-grid" id="dashGrid">

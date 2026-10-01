@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="건강 지킴이">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2563eb"/>
-      <stop offset="1" stop-color="#1e3a8a"/>
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#2563eb"/>
     </linearGradient>
   </defs>
-  <rect x="24" y="24" width="464" height="464" rx="112" fill="#ffffff"/>
-  <path d="M256 408c-7 0-14-2.6-19.4-7.5C184 353 112 300 112 232c0-40 30-72 70-72 25 0 47 12.5 60 32l14 20 14-20c13-19.5 35-32 60-32 40 0 70 32 70 72 0 68-72 121-124.6 168.5C270 405.4 263 408 256 408z" fill="url(#g)"/>
-  <path d="M190 262h34l16-30 24 56 16-30h48" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#g)"/>
+  <path d="M256 404c-7 0-14-2.6-19.4-7.5C184 349 112 296 112 228c0-40 30-72 70-72 25 0 47 12.5 60 32l14 20 14-20c13-19.5 35-32 60-32 40 0 70 32 70 72 0 68-72 121-124.6 168.5C270 401.4 263 404 256 404z" fill="#ffffff"/>
+  <path d="M186 258h38l17-32 26 58 17-32h52" fill="none" stroke="#3b82f6" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
