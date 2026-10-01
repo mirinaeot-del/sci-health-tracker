@@ -336,6 +336,15 @@ textarea { resize: vertical; }
 .item-btn:hover { border-color: var(--primary-2); color: var(--primary); }
 .item-btn.added { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
 
+/* 근력: 부위 × 방법 조합 선택 */
+.picker-items.combo { flex-direction: column; align-items: stretch; gap: 10px; }
+.combo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.combo-label { font-size: 13px; font-weight: 700; color: var(--text-muted); width: 38px; flex-shrink: 0; }
+.item-btn.sm { padding: 7px 14px; font-size: 14px; }
+.item-btn.picked { background: var(--primary); border-color: var(--primary); color: #fff; }
+.combo-add { width: 100%; margin-top: 4px; border: 2px dashed var(--border); background: var(--bg); color: var(--text-muted); border-radius: 12px; padding: 12px; font-size: 15px; font-weight: 700; cursor: not-allowed; }
+.combo-add.ready { border-style: solid; border-color: var(--primary); background: var(--primary); color: #fff; cursor: pointer; }
+
 /* 추가된 항목 목록 (인라인 시간/강도 편집) */
 .picker-list { display: flex; flex-direction: column; gap: 8px; }
 .picker-empty {

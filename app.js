@@ -52,11 +52,12 @@
   /* 운동 카탈로그: 카테고리 → 종목 (SCI 참여자 재활 중심) */
   var EXERCISE_CATALOG = [
     { id: "aerobic", label: "유산소", icon: "🏃",
-      items: ["휠체어 유산소", "핸드 사이클", "트레드밀 보행", "실내 자전거", "수영/아쿠아"] },
-    { id: "strength", label: "근력", icon: "🏋️",
-      items: ["상지 근력운동", "체간 근력운동", "하지 근력운동", "저항밴드 운동", "매트 운동"] },
+      items: ["휠체어 유산소", "런닝", "계단오르기", "줄넘기", "로잉", "트레드밀 보행", "실내/외 자전거", "수영/아쿠아"] },
+    { id: "strength", label: "근력", icon: "🏋️", mode: "combo",
+      bodyParts: ["상체", "하체", "체간(코어)"],
+      methods: ["맨몸", "바벨", "덤벨", "케틀벨", "머신"] },
     { id: "flexibility", label: "유연성·밸런스", icon: "🤸",
-      items: ["스트레칭", "관절 가동범위(ROM)", "앉기 균형 훈련", "요가", "필라테스"] },
+      items: ["스트레칭", "관절 가동범위(ROM)", "앉기 균형 훈련", "서기 균형 훈련", "요가", "필라테스"] },
     { id: "rehab", label: "재활훈련", icon: "🦿",
       items: ["기립/체중부하 훈련", "트랜스퍼 훈련", "보행 훈련", "호흡 운동", "전기자극 치료(FES)"] },
     { id: "etc", label: "기타", icon: "✨",
@@ -77,7 +78,10 @@
   /* 종목명 → 카테고리 라벨/아이콘 조회 */
   function exerciseCat(name) {
     for (var i = 0; i < EXERCISE_CATALOG.length; i++) {
-      if (EXERCISE_CATALOG[i].items.indexOf(name) >= 0) return EXERCISE_CATALOG[i];
+      var c = EXERCISE_CATALOG[i];
+      if (c.items && c.items.indexOf(name) >= 0) return c;
+      // 근력(조합형): "상체/맨몸운동" 처럼 부위명으로 시작하면 근력으로 인식
+      if (c.mode === "combo" && c.bodyParts.some(function (bp) { return name.indexOf(bp) === 0; })) return c;
     }
     return EXERCISE_CATALOG[EXERCISE_CATALOG.length - 1]; // 기타
   }
@@ -586,6 +590,7 @@
      ========================================================= */
   var draft = { mood: null, pain: 0, spasticity: 0, urine: 0, bowel: 0, skin: null, exercises: [], activities: [] };
   var currentExCat = EXERCISE_CATALOG[0].id; // 현재 선택된 운동 카테고리
+  var strengthSel = { part: null, method: null }; // 근력 조합 선택 상태
 
   function initRecord() {
     $("#recordDate").value = todayStr();
@@ -642,6 +647,58 @@
     var box = $("#exItems");
     box.innerHTML = "";
     var cat = EXERCISE_CATALOG.filter(function (c) { return c.id === currentExCat; })[0];
+
+    // 근력: 부위 × 방법 조합 선택 UI
+    if (cat.mode === "combo") {
+      box.classList.add("combo");
+      // 부위 줄
+      var partRow = el("div", "combo-row");
+      partRow.appendChild(el("span", "combo-label", "부위"));
+      cat.bodyParts.forEach(function (p) {
+        var b = el("button", "item-btn sm" + (strengthSel.part === p ? " picked" : ""), escapeHtml(p));
+        b.type = "button";
+        b.addEventListener("click", function () {
+          strengthSel.part = (strengthSel.part === p ? null : p);
+          renderExerciseItems();
+        });
+        partRow.appendChild(b);
+      });
+      box.appendChild(partRow);
+      // 방법 줄
+      var methodRow = el("div", "combo-row");
+      methodRow.appendChild(el("span", "combo-label", "방법"));
+      cat.methods.forEach(function (m) {
+        var b = el("button", "item-btn sm" + (strengthSel.method === m ? " picked" : ""), escapeHtml(m));
+        b.type = "button";
+        b.addEventListener("click", function () {
+          strengthSel.method = (strengthSel.method === m ? null : m);
+          renderExerciseItems();
+        });
+        methodRow.appendChild(b);
+      });
+      box.appendChild(methodRow);
+      // 추가 버튼
+      var ready = strengthSel.part && strengthSel.method;
+      var name = ready ? (strengthSel.part + "/" + strengthSel.method + "운동") : "";
+      var already = ready && draft.exercises.some(function (e) { return e.type === name; });
+      var addBtn = el("button", "combo-add" + (ready && !already ? " ready" : ""),
+        ready ? (already ? "✓ 이미 추가됨: " + escapeHtml(name) : "＋ 추가: " + escapeHtml(name))
+              : "부위와 방법을 모두 선택하세요");
+      addBtn.type = "button";
+      addBtn.disabled = !ready || already;
+      addBtn.addEventListener("click", function () {
+        if (!ready || already) return;
+        draft.exercises.push({ type: name, minutes: 30, intensity: "보통" });
+        strengthSel = { part: null, method: null };
+        renderExerciseItems();
+        renderExerciseList();
+      });
+      box.appendChild(addBtn);
+      return;
+    }
+
+    // 일반 카테고리: 종목 버튼
+    box.classList.remove("combo");
     cat.items.forEach(function (name) {
       var added = draft.exercises.some(function (e) { return e.type === name; });
       var b = el("button", "item-btn" + (added ? " added" : ""),
