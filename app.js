@@ -59,7 +59,7 @@
     { id: "flexibility", label: "유연성·밸런스", icon: "🤸",
       items: ["스트레칭", "관절 가동범위(ROM)", "앉기 균형 훈련", "서기 균형 훈련", "요가", "필라테스"] },
     { id: "rehab", label: "재활훈련", icon: "🦿",
-      items: ["기립/체중부하 훈련", "트랜스퍼 훈련", "보행 훈련", "호흡 운동", "전기자극 치료(FES)"] },
+      items: ["상지기능훈련", "하지기능훈련", "기립/체중부하 훈련", "트랜스퍼 훈련", "보행 훈련", "호흡 운동", "전기자극 치료(FES)", "통증치료", "기구 이용", "기타"] },
     { id: "etc", label: "기타", icon: "✨",
       items: ["산책", "레크리에이션 스포츠", "기타"] }
   ];
@@ -590,7 +590,9 @@
      ========================================================= */
   var draft = { mood: null, pain: 0, spasticity: 0, urine: 0, bowel: 0, skin: null, exercises: [], activities: [] };
   var currentExCat = EXERCISE_CATALOG[0].id; // 현재 선택된 운동 카테고리
-  var strengthSel = { part: null, method: null }; // 근력 조합 선택 상태
+  // 묶어서 추가하기 위한 선택 상태 (카테고리 전환 시 초기화)
+  var picSel = [];                       // 일반 카테고리: 선택된 종목명 배열
+  var strengthSel = { parts: [], methods: [] }; // 근력: 선택된 부위/방법 배열
 
   function initRecord() {
     $("#recordDate").value = todayStr();
@@ -637,6 +639,8 @@
       b.type = "button";
       b.addEventListener("click", function () {
         currentExCat = cat.id;
+        picSel = [];                           // 카테고리 바꾸면 선택 초기화
+        strengthSel = { parts: [], methods: [] };
         renderExerciseCats();
         renderExerciseItems();
       });
@@ -648,48 +652,48 @@
     box.innerHTML = "";
     var cat = EXERCISE_CATALOG.filter(function (c) { return c.id === currentExCat; })[0];
 
-    // 근력: 부위 × 방법 조합 선택 UI
+    // 근력: 부위 × 방법 다중 조합 선택 UI
     if (cat.mode === "combo") {
       box.classList.add("combo");
-      // 부위 줄
+      // 부위 줄 (다중)
       var partRow = el("div", "combo-row");
       partRow.appendChild(el("span", "combo-label", "부위"));
       cat.bodyParts.forEach(function (p) {
-        var b = el("button", "item-btn sm" + (strengthSel.part === p ? " picked" : ""), escapeHtml(p));
+        var on = strengthSel.parts.indexOf(p) >= 0;
+        var b = el("button", "item-btn sm" + (on ? " picked" : ""), escapeHtml(p));
         b.type = "button";
         b.addEventListener("click", function () {
-          strengthSel.part = (strengthSel.part === p ? null : p);
+          toggleIn(strengthSel.parts, p);
           renderExerciseItems();
         });
         partRow.appendChild(b);
       });
       box.appendChild(partRow);
-      // 방법 줄
+      // 방법 줄 (다중)
       var methodRow = el("div", "combo-row");
       methodRow.appendChild(el("span", "combo-label", "방법"));
       cat.methods.forEach(function (m) {
-        var b = el("button", "item-btn sm" + (strengthSel.method === m ? " picked" : ""), escapeHtml(m));
+        var on = strengthSel.methods.indexOf(m) >= 0;
+        var b = el("button", "item-btn sm" + (on ? " picked" : ""), escapeHtml(m));
         b.type = "button";
         b.addEventListener("click", function () {
-          strengthSel.method = (strengthSel.method === m ? null : m);
+          toggleIn(strengthSel.methods, m);
           renderExerciseItems();
         });
         methodRow.appendChild(b);
       });
       box.appendChild(methodRow);
-      // 추가 버튼
-      var ready = strengthSel.part && strengthSel.method;
-      var name = ready ? (strengthSel.part + "/" + strengthSel.method + "운동") : "";
-      var already = ready && draft.exercises.some(function (e) { return e.type === name; });
-      var addBtn = el("button", "combo-add" + (ready && !already ? " ready" : ""),
-        ready ? (already ? "✓ 이미 추가됨: " + escapeHtml(name) : "＋ 추가: " + escapeHtml(name))
-              : "부위와 방법을 모두 선택하세요");
+      // 추가 버튼: 선택된 부위·방법을 "상체·하체 / 덤벨·바벨" 한 항목으로 묶음
+      var ready = strengthSel.parts.length && strengthSel.methods.length;
+      var name = ready ? (strengthSel.parts.join("·") + " / " + strengthSel.methods.join("·") + " 운동") : "";
+      var addBtn = el("button", "combo-add" + (ready ? " ready" : ""),
+        ready ? "＋ 묶어서 추가: " + escapeHtml(name) : "부위와 방법을 하나 이상 선택하세요");
       addBtn.type = "button";
-      addBtn.disabled = !ready || already;
+      addBtn.disabled = !ready;
       addBtn.addEventListener("click", function () {
-        if (!ready || already) return;
+        if (!ready) return;
         draft.exercises.push({ type: name, minutes: 30, intensity: "보통" });
-        strengthSel = { part: null, method: null };
+        strengthSel = { parts: [], methods: [] };
         renderExerciseItems();
         renderExerciseList();
       });
@@ -697,24 +701,43 @@
       return;
     }
 
-    // 일반 카테고리: 종목 버튼
+    // 일반 카테고리: 종목 다중 선택 후 "묶어서 추가"
     box.classList.remove("combo");
+    var itemsWrap = el("div", "combo-row wrap");
     cat.items.forEach(function (name) {
-      var added = draft.exercises.some(function (e) { return e.type === name; });
-      var b = el("button", "item-btn" + (added ? " added" : ""),
-        (added ? "✓ " : "＋ ") + escapeHtml(name));
+      var on = picSel.indexOf(name) >= 0;
+      var b = el("button", "item-btn" + (on ? " picked" : ""),
+        (on ? "✓ " : "＋ ") + escapeHtml(name));
       b.type = "button";
       b.addEventListener("click", function () {
-        if (added) { // 이미 추가됨 → 토글 해제
-          draft.exercises = draft.exercises.filter(function (e) { return e.type !== name; });
-        } else {
-          draft.exercises.push({ type: name, minutes: 30, intensity: "보통" });
-        }
+        toggleIn(picSel, name);
         renderExerciseItems();
-        renderExerciseList();
       });
-      box.appendChild(b);
+      itemsWrap.appendChild(b);
     });
+    box.appendChild(itemsWrap);
+    // 묶어서 추가 버튼
+    var readyG = picSel.length > 0;
+    var nameG = picSel.join(" + ");
+    var addG = el("button", "combo-add" + (readyG ? " ready" : ""),
+      readyG ? "＋ 선택한 " + picSel.length + "개 묶어서 추가: " + escapeHtml(nameG)
+             : "종목을 하나 이상 선택하세요");
+    addG.type = "button";
+    addG.disabled = !readyG;
+    addG.addEventListener("click", function () {
+      if (!readyG) return;
+      draft.exercises.push({ type: nameG, minutes: 30, intensity: "보통" });
+      picSel = [];
+      renderExerciseItems();
+      renderExerciseList();
+    });
+    box.appendChild(addG);
+  }
+
+  /* 배열에 값이 있으면 제거, 없으면 추가 (토글) */
+  function toggleIn(arr, val) {
+    var i = arr.indexOf(val);
+    if (i >= 0) arr.splice(i, 1); else arr.push(val);
   }
 
   /* ---- 활동: 종목 버튼 ---- */
