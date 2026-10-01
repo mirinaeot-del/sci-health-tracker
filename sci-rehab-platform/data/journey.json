@@ -1,0 +1,70 @@
+{
+  "stages": [
+    {
+      "id": "acute",
+      "order": 1,
+      "label": "급성기",
+      "goal": "생명·의학적 안정과 2차 합병증(욕창·구축·호흡기) 예방",
+      "assessment": ["의학적 상태", "AIS 초기 평가", "합병증 위험 선별"],
+      "treatment": ["체위변경", "관절가동범위(ROM)", "호흡 관리", "피부 보호"],
+      "education": ["보호자 체위변경", "피부관리 기초", "SCI 이해"],
+      "caregiverRole": "체위변경·피부관찰 등 기본 돌봄 습득",
+      "prepare": ["가족 지지체계 확인", "재활 목표 상담 준비"]
+    },
+    {
+      "id": "early",
+      "order": 2,
+      "label": "초기재활",
+      "goal": "기본 기능 회복과 침상·휠체어 활동의 기초 형성",
+      "assessment": ["SCIM", "MBI", "상지·체간 기능"],
+      "treatment": ["침상 이동", "앉기 균형", "기초 상지 훈련"],
+      "education": ["배뇨·배변 관리", "휠체어 기초"],
+      "caregiverRole": "이동 보조와 ADL 보조 방법 학습",
+      "prepare": ["휠체어 평가 시작", "재활 목표 설정"]
+    },
+    {
+      "id": "intensive",
+      "order": 3,
+      "label": "집중재활",
+      "goal": "ADL 자립 확대, 휠체어 기술, Transfer 독립성 향상",
+      "assessment": ["SCIM 재평가", "상지·손 기능", "휠체어 평가"],
+      "treatment": ["ADL 훈련(식사·착의·위생)", "Transfer", "휠체어 기술", "손 기능"],
+      "education": ["보호자 Transfer 교육", "자가관리 심화"],
+      "caregiverRole": "Transfer·ADL 보조 숙달, 최소 도움으로 유도",
+      "prepare": ["가정환경 평가", "보조공학 검토"]
+    },
+    {
+      "id": "discharge-prep",
+      "order": 4,
+      "label": "퇴원준비",
+      "goal": "가정·지역사회 복귀를 위한 실전 준비 완료",
+      "assessment": ["퇴원 준비도 체크", "가정환경 평가", "보호자 교육 완료도"],
+      "treatment": ["실전 ADL 리허설", "지역사회 이동 연습"],
+      "education": ["가정환경 수정", "응급상황 대처", "지속 관리 계획"],
+      "caregiverRole": "가정에서의 전 과정 독립 수행 확인",
+      "prepare": ["주거 개조", "휠체어 최종 선정", "차량·이동 계획"]
+    },
+    {
+      "id": "community",
+      "order": 5,
+      "label": "지역사회 복귀",
+      "goal": "일상·직업·여가로의 실제 복귀",
+      "assessment": ["지역사회 이동 능력", "직업 평가"],
+      "treatment": ["대중교통·차량 이동", "직장환경 적응"],
+      "education": ["직업복귀 지원", "여가·사회참여"],
+      "caregiverRole": "자립 지원 및 사회참여 동반",
+      "prepare": ["직업 재활 연계", "지역 자원 연계"]
+    },
+    {
+      "id": "long-term",
+      "order": 6,
+      "label": "장기관리",
+      "goal": "합병증 예방과 삶의 질 유지, 정기 추적",
+      "assessment": ["정기 건강검진", "합병증 모니터링"],
+      "treatment": ["운동 유지", "정기 재활 점검"],
+      "education": ["평생 건강관리", "합병증 조기 발견"],
+      "caregiverRole": "지속적 건강관리 동반",
+      "prepare": ["정기 추적 일정", "지역 의료 연계"]
+    }
+  ]
+}
