@@ -130,9 +130,20 @@
       return s;
     },
 
+    /* ---- 목표 ---- */
+    getGoals: function () {
+      // 기본 목표값
+      var defaults = { exMin: 150, exDays: 3, actMin: 300, recordDays: 5 };
+      return Object.assign(defaults, readJSON(key("goals"), {}));
+    },
+    saveGoals: function (goals) {
+      writeJSON(key("goals"), goals);
+      return goals;
+    },
+
     /* ---- 전체 삭제 (현재 사용자 데이터만) ---- */
     clearAll: function () {
-      ["profile", "records", "surveys", "settings"].forEach(function (kind) {
+      ["profile", "records", "surveys", "settings", "goals"].forEach(function (kind) {
         localStorage.removeItem(key(kind));
       });
     }

@@ -1,0 +1,26 @@
+{
+  "name": "건강 지킴이 · 척수손상 건강기록",
+  "short_name": "건강 지킴이",
+  "description": "척수손상(SCI) 참여자용 건강기록 · 기능평가 · 월별 분석 앱",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef2f7",
+  "theme_color": "#1e3a8a",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

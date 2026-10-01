@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="건강 지킴이">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#1e3a8a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <path d="M256 392c-6.4 0-12.7-2.4-17.7-6.9C190 342 124 294 124 232c0-36 27-65 63-65 22.5 0 42.5 11 54 29l15 23 15-23c11.5-18 31.5-29 54-29 36 0 63 29 63 65 0 62-66 110-114.3 153.1C268.7 389.6 262.4 392 256 392z" fill="#ffffff"/>
+  <path d="M196 258h32l15-28 23 52 15-28h44" fill="none" stroke="#2563eb" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -41,8 +41,9 @@ body {
   display: flex; align-items: center; gap: 16px;
   padding: 0 20px; height: 60px;
 }
-.brand { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 800; }
 .brand-icon { font-size: 22px; }
+.brand-mark { display: block; width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; }
 .brand-name { font-size: 18px; letter-spacing: -0.5px; white-space: nowrap; }
 
 .nav-menu { display: flex; gap: 4px; flex: 1; justify-content: center; }
@@ -124,6 +125,7 @@ body {
 .dash-card.purple { border-left-color: #7c3aed; }
 .dash-card.amber { border-left-color: #f59e0b; }
 .dash-card.teal { border-left-color: #0d9488; }
+.dash-card.red { border-left-color: #ef4444; }
 .dash-icon { font-size: 34px; }
 .dash-num { font-size: 30px; font-weight: 800; line-height: 1.1; }
 .dash-unit { font-size: 15px; font-weight: 600; color: var(--text-muted); margin-left: 3px; }
@@ -388,10 +390,82 @@ textarea { resize: vertical; }
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--text); color: #fff; padding: 14px 24px; border-radius: 30px; font-size: 15px; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,0.25); opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s; z-index: 200; max-width: 90%; text-align: center; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ================= 월별 분석 ================= */
+.monthly-top { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: start; }
+
+/* 캘린더 */
+.calendar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.cal-title { font-size: 18px; font-weight: 800; }
+.cal-nav { border: 1.5px solid var(--border); background: var(--card); color: var(--primary); border-radius: 10px; width: 38px; height: 38px; font-size: 14px; cursor: pointer; }
+.cal-nav:hover { background: var(--primary-light); }
+.calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 6px; }
+.wd { text-align: center; font-size: 13px; font-weight: 700; color: var(--text-muted); padding: 4px 0; }
+.wd.sun { color: #ef4444; } .wd.sat { color: var(--primary-2); }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-cell { aspect-ratio: 1 / 1; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 6px; position: relative; }
+.cal-cell.empty { background: none; }
+.cal-cell.filled { background: #f8fafc; cursor: pointer; transition: background 0.15s; }
+.cal-cell.filled:hover { background: var(--primary-light); }
+.cal-cell.today { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cal-num { font-size: 14px; font-weight: 700; }
+.cal-num.sun { color: #ef4444; } .cal-num.sat { color: var(--primary-2); }
+.cal-dots { display: flex; gap: 3px; margin-top: 4px; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+.dot.has-record { background: var(--primary-2); }
+.dot.has-exercise { background: var(--success); }
+.dot.today-dot { background: var(--accent); }
+.calendar-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.calendar-legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+/* 월간 합계 */
+.month-stats { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.ms-item { display: flex; align-items: center; gap: 12px; }
+.ms-icon { font-size: 22px; width: 30px; text-align: center; }
+.ms-num { font-size: 20px; font-weight: 800; }
+.ms-unit { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-left: 2px; }
+.ms-lbl { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+.ms-body { display: flex; align-items: baseline; gap: 8px; }
+.month-record-days { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border); text-align: center; }
+.mrd-num { font-size: 36px; font-weight: 800; color: var(--primary); line-height: 1; }
+.mrd-lbl { font-size: 13px; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+
+/* 목표 달성률 */
+.goal-progress { display: flex; flex-direction: column; gap: 16px; }
+.goal-row-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.goal-label { font-weight: 700; font-size: 15px; }
+.goal-val { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+.goal-val b { color: var(--primary); font-size: 15px; margin-left: 2px; }
+.bar-fill.done { background: linear-gradient(90deg, #16a34a, #15803d); }
+
+/* 카테고리별 운동 시간 */
+.cat-time-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+.cat-time-item { background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+.cti-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.cti-icon { font-size: 18px; }
+.cti-label { font-size: 14px; font-weight: 700; }
+.cti-num { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+.cti-num span { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-left: 2px; }
+.bar.sm { height: 8px; }
+
+/* 추이 그래프 */
+.trend-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.trend-tab { border: 1.5px solid var(--border); background: var(--card); color: var(--text-muted); border-radius: 20px; padding: 7px 16px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+.trend-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.daily-trend { display: flex; align-items: flex-end; gap: 6px; height: 180px; padding-top: 10px; overflow-x: auto; }
+.dt-col { flex: 1; min-width: 32px; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.dt-bar-wrap { flex: 1; width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.dt-val { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 3px; min-height: 14px; }
+.dt-bar { width: 70%; max-width: 34px; border-radius: 6px 6px 0 0; min-height: 0; transition: height 0.4s; }
+.dt-bar.exercise { background: linear-gradient(180deg, #22c55e, #16a34a); }
+.dt-bar.mood { background: linear-gradient(180deg, #f59e0b, #d97706); }
+.dt-bar.pain { background: linear-gradient(180deg, #f87171, #ef4444); }
+.dt-x { font-size: 11px; color: var(--text-muted); margin-top: 6px; white-space: nowrap; }
+
 /* ================= 반응형 (모바일) ================= */
 @media (max-width: 860px) {
   .record-layout { grid-template-columns: 1fr; }
   .record-side { position: static; }
+  .monthly-top { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
   .topnav-inner { flex-wrap: wrap; height: auto; padding: 10px 14px; gap: 10px; }

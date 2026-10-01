@@ -99,6 +99,7 @@
     window.scrollTo(0, 0);
     // 진입 시 렌더
     if (name === "dashboard") renderDashboard();
+    if (name === "monthly") renderMonthly();
     if (name === "history") renderHistory();
     if (name === "survey") renderSurveyView();
     if (name === "analysis") renderAnalysis();
@@ -180,7 +181,9 @@
     var moods = last7.filter(function (r) { return r.mood != null; }).map(function (r) { return r.mood; });
     var avgMood = moods.length ? Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length) : null;
 
+    var streak = calcStreak();
     var cards = [];
+    cards.push(dashCard("🔥", streak, "연속 기록", "일", "red"));
     cards.push(dashCard("📝", records.length, "총 기록 수", "일", "blue"));
     cards.push(dashCard("💪", exDays, "최근 7일 운동", "일", "green"));
     cards.push(dashCard("⏱️", totalExMin, "누적 운동 시간", "분", "purple"));
@@ -866,6 +869,242 @@
   }
 
   /* =========================================================
+     월별 분석 (캘린더 · 합계 · 카테고리 · 추이 · 목표)
+     ========================================================= */
+  var calYear, calMonth; // 현재 보고 있는 달 (month: 0~11)
+  var trendMetric = "exercise";
+
+  function initMonthly() {
+    var d = new Date();
+    calYear = d.getFullYear();
+    calMonth = d.getMonth();
+    $("#calPrev").addEventListener("click", function () { shiftMonth(-1); });
+    $("#calNext").addEventListener("click", function () { shiftMonth(1); });
+    $all("#trendTabs .trend-tab").forEach(function (t) {
+      t.addEventListener("click", function () {
+        trendMetric = t.getAttribute("data-metric");
+        $all("#trendTabs .trend-tab").forEach(function (x) { x.classList.remove("active"); });
+        t.classList.add("active");
+        renderDailyTrend();
+      });
+    });
+  }
+  function shiftMonth(delta) {
+    calMonth += delta;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    else if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderMonthly();
+  }
+
+  // 해당 월의 기록만 추출
+  function recordsInMonth(year, month) {
+    var prefix = year + "-" + ("0" + (month + 1)).slice(-2);
+    return Store.listRecords().filter(function (r) { return r.date.indexOf(prefix) === 0; });
+  }
+  function sumExMin(r) { return (r.exercises || []).reduce(function (s, e) { return s + (e.minutes || 0); }, 0); }
+  function sumActMin(r) { return (r.activities || []).reduce(function (s, a) { return s + (a.minutes || 0); }, 0); }
+
+  function renderMonthly() {
+    renderCalendar();
+    renderMonthStats();
+    renderGoalProgress();
+    renderCatTime();
+    renderDailyTrend();
+    var mrecs = recordsInMonth(calYear, calMonth);
+    $("#monthlyEmpty").hidden = mrecs.length > 0;
+  }
+
+  function renderCalendar() {
+    $("#calTitle").textContent = calYear + "년 " + (calMonth + 1) + "월";
+    var grid = $("#calGrid");
+    grid.innerHTML = "";
+    var first = new Date(calYear, calMonth, 1);
+    var startDay = first.getDay(); // 0=일
+    var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    var recMap = {};
+    recordsInMonth(calYear, calMonth).forEach(function (r) { recMap[r.date] = r; });
+    var today = todayStr();
+
+    // 앞 빈칸
+    for (var i = 0; i < startDay; i++) grid.appendChild(el("div", "cal-cell empty"));
+    for (var day = 1; day <= daysInMonth; day++) {
+      var iso = calYear + "-" + ("0" + (calMonth + 1)).slice(-2) + "-" + ("0" + day).slice(-2);
+      var r = recMap[iso];
+      var cls = "cal-cell";
+      if (iso === today) cls += " today";
+      var cell = el("div", cls);
+      var dow = new Date(calYear, calMonth, day).getDay();
+      var numCls = "cal-num" + (dow === 0 ? " sun" : (dow === 6 ? " sat" : ""));
+      cell.innerHTML = '<span class="' + numCls + '">' + day + '</span>';
+      if (r) {
+        var hasEx = (r.exercises && r.exercises.length) || (r.activities && r.activities.length);
+        var dots = el("div", "cal-dots");
+        dots.appendChild(el("i", "dot has-record"));
+        if (hasEx) dots.appendChild(el("i", "dot has-exercise"));
+        cell.appendChild(dots);
+        cell.classList.add("filled");
+        (function (dateIso) {
+          cell.addEventListener("click", function () {
+            showView("record");
+            $("#recordDate").value = dateIso;
+            loadDraftForDate();
+          });
+        })(iso);
+      }
+      grid.appendChild(cell);
+    }
+  }
+
+  function renderMonthStats() {
+    var mrecs = recordsInMonth(calYear, calMonth);
+    var now = new Date();
+    var isThisMonth = (calYear === now.getFullYear() && calMonth === now.getMonth());
+    $("#monthStatLabel").textContent = isThisMonth ? "이번 달" : (calMonth + 1) + "월";
+
+    var exMin = mrecs.reduce(function (s, r) { return s + sumExMin(r); }, 0);
+    var actMin = mrecs.reduce(function (s, r) { return s + sumActMin(r); }, 0);
+    var exDays = mrecs.filter(function (r) { return r.exercises && r.exercises.length; }).length;
+    var pains = mrecs.filter(function (r) { return r.pain != null; }).map(function (r) { return r.pain; });
+    var avgPain = pains.length ? (pains.reduce(function (a, b) { return a + b; }) / pains.length).toFixed(1) : "–";
+    var moods = mrecs.filter(function (r) { return r.mood != null; }).map(function (r) { return r.mood; });
+    var avgMood = moods.length ? MOOD_FACES[Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length)] : "–";
+
+    $("#monthStats").innerHTML =
+      monthStat("💪", exMin, "분", "운동 시간") +
+      monthStat("🗓️", actMin, "분", "활동 시간") +
+      monthStat("📆", exDays, "일", "운동한 날") +
+      monthStat("⚡", avgPain, "", "평균 통증") +
+      monthStat("🙂", avgMood, "", "평균 컨디션");
+    $("#monthRecordDays").textContent = mrecs.length;
+  }
+  function monthStat(icon, num, unit, label) {
+    return '<div class="ms-item"><div class="ms-icon">' + icon + '</div>' +
+      '<div class="ms-body"><div class="ms-num">' + num + (unit ? '<span class="ms-unit">' + unit + '</span>' : '') +
+      '</div><div class="ms-lbl">' + label + '</div></div></div>';
+  }
+
+  // 이번 주(최근 7일) 목표 달성률
+  function renderGoalProgress() {
+    var goals = Store.getGoals();
+    var since = new Date(); since.setDate(since.getDate() - 6);
+    var sinceStr = new Date(since.getTime() - since.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    var week = Store.listRecords().filter(function (r) { return r.date >= sinceStr; });
+
+    var exMin = week.reduce(function (s, r) { return s + sumExMin(r); }, 0);
+    var actMin = week.reduce(function (s, r) { return s + sumActMin(r); }, 0);
+    var exDays = week.filter(function (r) { return r.exercises && r.exercises.length; }).length;
+    var recDays = week.length;
+
+    var box = $("#goalProgress");
+    box.innerHTML = "";
+    box.appendChild(goalBar("💪 운동 시간", exMin, goals.exMin, "분"));
+    box.appendChild(goalBar("📆 운동 일수", exDays, goals.exDays, "일"));
+    box.appendChild(goalBar("🗓️ 활동 시간", actMin, goals.actMin, "분"));
+    box.appendChild(goalBar("📝 기록 일수", recDays, goals.recordDays, "일"));
+  }
+  function goalBar(label, cur, goal, unit) {
+    var pct = goal > 0 ? Math.min(100, Math.round(cur / goal * 100)) : 0;
+    var done = pct >= 100;
+    var row = el("div", "goal-row");
+    row.innerHTML =
+      '<div class="goal-row-head"><span class="goal-label">' + label + (done ? ' ✅' : '') + '</span>' +
+      '<span class="goal-val">' + cur + ' / ' + goal + unit + ' <b>' + pct + '%</b></span></div>' +
+      '<div class="bar"><div class="bar-fill ' + (done ? 'done' : 'target') + '" style="width:' + pct + '%"></div></div>';
+    return row;
+  }
+
+  // 카테고리별 운동 시간 (이번 달)
+  function renderCatTime() {
+    var mrecs = recordsInMonth(calYear, calMonth);
+    var totals = {}; // catId -> minutes
+    EXERCISE_CATALOG.forEach(function (c) { totals[c.id] = 0; });
+    mrecs.forEach(function (r) {
+      (r.exercises || []).forEach(function (e) {
+        var cat = exerciseCat(e.type);
+        totals[cat.id] = (totals[cat.id] || 0) + (e.minutes || 0);
+      });
+    });
+    var max = Math.max.apply(null, EXERCISE_CATALOG.map(function (c) { return totals[c.id]; }).concat([1]));
+    var grid = $("#catTimeGrid");
+    grid.innerHTML = "";
+    EXERCISE_CATALOG.forEach(function (c) {
+      var min = totals[c.id];
+      var pct = Math.round(min / max * 100);
+      grid.appendChild(el("div", "cat-time-item",
+        '<div class="cti-head"><span class="cti-icon">' + c.icon + '</span><span class="cti-label">' + c.label + '</span></div>' +
+        '<div class="cti-num">' + min + '<span>분</span></div>' +
+        '<div class="bar sm"><div class="bar-fill target" style="width:' + pct + '%"></div></div>'));
+    });
+  }
+
+  // 최근 14일 일자별 추이
+  function renderDailyTrend() {
+    var days = 14;
+    var map = {};
+    Store.listRecords().forEach(function (r) { map[r.date] = r; });
+    var cols = [];
+    for (var i = days - 1; i >= 0; i--) {
+      var d = new Date(); d.setDate(d.getDate() - i);
+      var iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      var r = map[iso];
+      var val = 0, label = "", max = 1;
+      if (trendMetric === "exercise") { val = r ? sumExMin(r) : 0; max = 60; label = val ? val + "분" : ""; }
+      else if (trendMetric === "mood") { val = r && r.mood != null ? r.mood : 0; max = 5; label = val ? String(val) : ""; }
+      else if (trendMetric === "pain") { val = r && r.pain != null ? r.pain : 0; max = 10; label = (r && r.pain != null) ? String(val) : ""; }
+      cols.push({ iso: iso, val: val, label: label, max: max, d: d });
+    }
+    var maxVal = Math.max.apply(null, cols.map(function (c) { return c.val; }).concat([cols[0].max]));
+    var chart = $("#dailyTrend");
+    chart.innerHTML = "";
+    var colorCls = trendMetric === "pain" ? "pain" : (trendMetric === "mood" ? "mood" : "exercise");
+    cols.forEach(function (c) {
+      var h = maxVal > 0 ? Math.round(c.val / maxVal * 100) : 0;
+      var col = el("div", "dt-col");
+      col.innerHTML =
+        '<div class="dt-bar-wrap"><div class="dt-val">' + c.label + '</div>' +
+        '<div class="dt-bar ' + colorCls + '" style="height:' + Math.max(h, c.val > 0 ? 6 : 0) + '%"></div></div>' +
+        '<div class="dt-x">' + (c.d.getMonth() + 1) + '/' + c.d.getDate() + '</div>';
+      chart.appendChild(col);
+    });
+  }
+
+  /* =========================================================
+     목표 설정 (프로필 내)
+     ========================================================= */
+  function initGoals() {
+    var g = Store.getGoals();
+    $("#goalExMin").value = g.exMin; $("#goalExDays").value = g.exDays;
+    $("#goalActMin").value = g.actMin; $("#goalRecordDays").value = g.recordDays;
+    $("#saveGoalBtn").addEventListener("click", function () {
+      Store.saveGoals({
+        exMin: Number($("#goalExMin").value) || 0,
+        exDays: Number($("#goalExDays").value) || 0,
+        actMin: Number($("#goalActMin").value) || 0,
+        recordDays: Number($("#goalRecordDays").value) || 0
+      });
+      $("#goalHint").textContent = "✓ 목표가 저장되었어요.";
+      toast("목표 저장 완료!");
+    });
+  }
+
+  /* 연속 기록(스트릭) 계산 — 오늘(또는 어제)부터 거슬러 연속 며칠 */
+  function calcStreak() {
+    var map = {};
+    Store.listRecords().forEach(function (r) { map[r.date] = true; });
+    var streak = 0;
+    var d = new Date();
+    // 오늘 기록이 없으면 어제부터 카운트
+    var todayIso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    if (!map[todayIso]) d.setDate(d.getDate() - 1);
+    for (var i = 0; i < 400; i++) {
+      var iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      if (map[iso]) { streak++; d.setDate(d.getDate() - 1); }
+      else break;
+    }
+    return streak;
+  }
+
+  /* =========================================================
      프로필
      ========================================================= */
   function initProfile() {
@@ -901,8 +1140,10 @@
     initOnboarding();
     initSurvey();
     initAnalysis();
+    initMonthly();
     initRecord();
     initProfile();
+    initGoals();
     $("#exportBtn").addEventListener("click", exportCSV);
 
     refreshUserChip();
