@@ -347,6 +347,15 @@ textarea { resize: vertical; }
 .combo-add.ready { border-style: solid; border-color: var(--primary); background: var(--primary); color: #fff; cursor: pointer; }
 .combo-add.ready:hover { background: var(--primary-2); }
 
+/* 선택 토글 + 바로추가(＋) 한 쌍 버튼 */
+.pick-item { display: inline-flex; align-items: stretch; border: 1.5px solid var(--border); border-radius: 22px; overflow: hidden; background: var(--card); transition: all 0.15s; }
+.pick-item.picked { border-color: var(--primary); }
+.pick-main { border: none; background: none; color: var(--text); padding: 8px 10px 8px 14px; font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.pick-item.picked .pick-main { background: var(--primary); color: #fff; }
+.pick-add { border: none; border-left: 1.5px solid var(--border); background: #f1f5f9; color: var(--primary); width: 34px; font-size: 17px; font-weight: 800; cursor: pointer; line-height: 1; }
+.pick-add:hover { background: var(--primary-light); }
+.pick-item.picked .pick-add { border-left-color: rgba(255,255,255,0.3); }
+
 /* 추가된 항목 목록 (인라인 시간/강도 편집) */
 .picker-list { display: flex; flex-direction: column; gap: 8px; }
 .picker-empty {

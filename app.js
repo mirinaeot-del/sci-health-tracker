@@ -67,12 +67,14 @@
 
   /* 활동(훈련) 종목: 일상 활동 */
   var ACTIVITY_ITEMS = [
-    { name: "TV보기", icon: "📺" }, { name: "전화하기", icon: "📞" },
-    { name: "걷기", icon: "🚶" }, { name: "독서", icon: "📖" },
-    { name: "식사하기", icon: "🍚" }, { name: "컴퓨터/휴대폰", icon: "💻" },
-    { name: "대화/사회활동", icon: "💬" }, { name: "외출", icon: "🏞️" },
-    { name: "집안일", icon: "🧹" }, { name: "취미활동", icon: "🎨" },
-    { name: "휴식", icon: "🛋️" }, { name: "기타", icon: "✨" }
+    { name: "식사하기", icon: "🍚" }, { name: "전화/대화", icon: "📞" },
+    { name: "사회활동", icon: "👥" }, { name: "TV보기", icon: "📺" },
+    { name: "산책", icon: "🚶" }, { name: "컴퓨터/휴대폰 활용", icon: "💻" },
+    { name: "독서", icon: "📖" }, { name: "스포츠 활동", icon: "⚽" },
+    { name: "취미/여가", icon: "🎨" }, { name: "쇼핑", icon: "🛍️" },
+    { name: "외출", icon: "🏞️" }, { name: "집안일", icon: "🧹" },
+    { name: "목욕", icon: "🛁" }, { name: "휴식", icon: "🛋️" },
+    { name: "기타", icon: "✨" }
   ];
 
   /* 종목명 → 카테고리 라벨/아이콘 조회 */
@@ -593,6 +595,7 @@
   // 묶어서 추가하기 위한 선택 상태 (카테고리 전환 시 초기화)
   var picSel = [];                       // 일반 카테고리: 선택된 종목명 배열
   var strengthSel = { parts: [], methods: [] }; // 근력: 선택된 부위/방법 배열
+  var actSel = [];                       // 활동: 선택된 종목명 배열
 
   function initRecord() {
     $("#recordDate").value = todayStr();
@@ -701,19 +704,14 @@
       return;
     }
 
-    // 일반 카테고리: 종목 다중 선택 후 "묶어서 추가"
+    // 일반 카테고리: 종목 선택(묶어서 추가) + 바로 추가 둘 다 지원
     box.classList.remove("combo");
     var itemsWrap = el("div", "combo-row wrap");
     cat.items.forEach(function (name) {
-      var on = picSel.indexOf(name) >= 0;
-      var b = el("button", "item-btn" + (on ? " picked" : ""),
-        (on ? "✓ " : "＋ ") + escapeHtml(name));
-      b.type = "button";
-      b.addEventListener("click", function () {
-        toggleIn(picSel, name);
-        renderExerciseItems();
-      });
-      itemsWrap.appendChild(b);
+      itemsWrap.appendChild(makePickItem(name, picSel, function () {
+        // 바로 추가
+        addExerciseItem(name);
+      }, renderExerciseItems));
     });
     box.appendChild(itemsWrap);
     // 묶어서 추가 버튼
@@ -721,18 +719,45 @@
     var nameG = picSel.join(" + ");
     var addG = el("button", "combo-add" + (readyG ? " ready" : ""),
       readyG ? "＋ 선택한 " + picSel.length + "개 묶어서 추가: " + escapeHtml(nameG)
-             : "종목을 하나 이상 선택하세요");
+             : "여러 개를 묶으려면 종목을 선택하세요 (또는 ＋로 바로 추가)");
     addG.type = "button";
     addG.disabled = !readyG;
     addG.addEventListener("click", function () {
       if (!readyG) return;
-      draft.exercises.push({ type: nameG, minutes: 30, intensity: "보통" });
+      addExerciseItem(nameG);
       picSel = [];
       renderExerciseItems();
-      renderExerciseList();
     });
     box.appendChild(addG);
   }
+
+  function addExerciseItem(name) {
+    if (!draft.exercises.some(function (e) { return e.type === name; })) {
+      draft.exercises.push({ type: name, minutes: 30, intensity: "보통" });
+    }
+    renderExerciseList();
+  }
+
+  /* 선택 토글(본체) + 바로추가(＋) 버튼 한 쌍을 만든다 */
+  function makePickItem(label, selArr, onInstantAdd, rerender) {
+    var on = selArr.indexOf(label) >= 0;
+    var wrap = el("div", "pick-item" + (on ? " picked" : ""));
+    var main = el("button", "pick-main", escapeHtml(label));
+    main.type = "button";
+    main.title = "선택(묶어서 추가용)";
+    main.addEventListener("click", function () { toggleIn(selArr, label); rerender(); });
+    var add = el("button", "pick-add", "＋");
+    add.type = "button";
+    add.title = "바로 추가";
+    add.addEventListener("click", function (e) {
+      e.stopPropagation();
+      onInstantAdd();
+      flashToast("추가됨: " + label);
+    });
+    wrap.appendChild(main); wrap.appendChild(add);
+    return wrap;
+  }
+  function flashToast(msg) { toast(msg); }
 
   /* 배열에 값이 있으면 제거, 없으면 추가 (토글) */
   function toggleIn(arr, val) {
@@ -740,26 +765,54 @@
     if (i >= 0) arr.splice(i, 1); else arr.push(val);
   }
 
-  /* ---- 활동: 종목 버튼 ---- */
+  /* ---- 활동: 선택(묶어서 추가) + 바로 추가 둘 다 지원 ---- */
   function renderActivityItems() {
     var box = $("#actItems");
     box.innerHTML = "";
+    box.classList.remove("single");
+    var wrap = el("div", "combo-row wrap");
     ACTIVITY_ITEMS.forEach(function (act) {
-      var added = draft.activities.some(function (a) { return a.name === act.name; });
-      var b = el("button", "item-btn" + (added ? " added" : ""),
-        '<span aria-hidden="true">' + act.icon + '</span> ' + (added ? "✓ " : "") + escapeHtml(act.name));
-      b.type = "button";
-      b.addEventListener("click", function () {
-        if (added) {
-          draft.activities = draft.activities.filter(function (a) { return a.name !== act.name; });
-        } else {
-          draft.activities.push({ name: act.name, minutes: 30 });
-        }
-        renderActivityItems();
-        renderActivityList();
+      var label = act.name;
+      var on = actSel.indexOf(label) >= 0;
+      var item = el("div", "pick-item" + (on ? " picked" : ""));
+      var main = el("button", "pick-main", '<span aria-hidden="true">' + act.icon + '</span> ' + escapeHtml(label));
+      main.type = "button";
+      main.title = "선택(묶어서 추가용)";
+      main.addEventListener("click", function () { toggleIn(actSel, label); renderActivityItems(); });
+      var add = el("button", "pick-add", "＋");
+      add.type = "button";
+      add.title = "바로 추가";
+      add.addEventListener("click", function (e) {
+        e.stopPropagation();
+        addActivityItem(label);
+        flashToast("추가됨: " + label);
       });
-      box.appendChild(b);
+      item.appendChild(main); item.appendChild(add);
+      wrap.appendChild(item);
     });
+    box.appendChild(wrap);
+
+    var ready = actSel.length > 0;
+    var name = actSel.join(" + ");
+    var addG = el("button", "combo-add" + (ready ? " ready" : ""),
+      ready ? "＋ 선택한 " + actSel.length + "개 묶어서 추가: " + escapeHtml(name)
+            : "여러 개를 묶으려면 활동을 선택하세요 (또는 ＋로 바로 추가)");
+    addG.type = "button";
+    addG.disabled = !ready;
+    addG.addEventListener("click", function () {
+      if (!ready) return;
+      addActivityItem(name);
+      actSel = [];
+      renderActivityItems();
+    });
+    box.appendChild(addG);
+  }
+
+  function addActivityItem(name) {
+    if (!draft.activities.some(function (a) { return a.name === name; })) {
+      draft.activities.push({ name: name, minutes: 30 });
+    }
+    renderActivityList();
   }
 
   function updateMoodUI() {
