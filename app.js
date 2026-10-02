@@ -60,15 +60,15 @@
       items: ["스트레칭", "관절 가동범위(ROM)", "앉기 균형 훈련", "서기 균형 훈련", "요가", "필라테스"] },
     { id: "rehab", label: "재활훈련", icon: "🦿",
       items: ["상지기능훈련", "하지기능훈련", "일상생활훈련", "기립/체중부하 훈련", "트랜스퍼 훈련", "보행 훈련", "호흡 운동", "전기자극 치료(FES)", "통증치료", "기구 이용", "기타"] },
-    { id: "etc", label: "기타", icon: "✨",
-      items: ["산책", "레크리에이션 스포츠", "기타"] }
+    { id: "sports", label: "스포츠", icon: "🏅",
+      items: ["휠체어 럭비", "탁구", "수영/아쿠아", "마라톤", "기타"] }
   ];
   var EX_INTENSITIES = ["가벼움", "보통", "힘듦"];
 
   /* 활동(훈련) 종목: 일상 활동 */
   var ACTIVITY_ITEMS = [
-    { name: "경제 활동", icon: "💼" }, { name: "친목/봉사 활동", icon: "🤝" },
-    { name: "스포츠 활동", icon: "⚽" }, { name: "취미/여가 활동", icon: "🎨" },
+    { name: "건강관리 활동", icon: "💊" }, { name: "경제 활동", icon: "💼" },
+    { name: "친목/봉사 활동", icon: "🤝" }, { name: "취미/여가 활동", icon: "🎨" },
     { name: "산책", icon: "🚶" }, { name: "쇼핑", icon: "🛍️" },
     { name: "집안일", icon: "🧹" }, { name: "TV시청", icon: "📺" },
     { name: "휴식", icon: "🛋️" }, { name: "독서", icon: "📖" },
@@ -628,6 +628,45 @@
       });
     });
     $("#saveBtn").addEventListener("click", saveRecord);
+    $("#loadPrevBtn").addEventListener("click", loadPreviousRecord);
+  }
+
+  /* 이전 기록 불러오기: 현재 날짜보다 이전의 가장 최근 기록을
+     현재 폼으로 복사한다 (날짜는 현재 폼 날짜 유지, 저장 전까지 미반영). */
+  function loadPreviousRecord() {
+    var curDate = $("#recordDate").value || todayStr();
+    // 현재 날짜보다 과거의 기록들 중 가장 최근 것
+    var prev = Store.listRecords().filter(function (r) { return r.date < curDate; })[0];
+    if (!prev) {
+      // 과거 기록이 없으면, 현재 날짜 제외 가장 최근(미래 포함) 기록으로 폴백
+      prev = Store.listRecords().filter(function (r) { return r.date !== curDate; })[0];
+    }
+    if (!prev) { toast("불러올 이전 기록이 없어요"); return; }
+
+    draft = {
+      mood: prev.mood != null ? prev.mood : null,
+      pain: prev.pain || 0, spasticity: prev.spasticity || 0,
+      urine: prev.urine || 0, bowel: prev.bowel || 0,
+      skin: prev.skin || null,
+      exercises: (prev.exercises || []).map(function (e) { return { type: e.type, minutes: e.minutes, intensity: e.intensity }; }),
+      activities: (prev.activities || []).map(function (a) { return { name: a.name, minutes: a.minutes }; })
+    };
+    var v = prev.vitals || {};
+    $("#bpSys").value = v.bpSys != null ? v.bpSys : "";
+    $("#bpDia").value = v.bpDia != null ? v.bpDia : "";
+    $("#pulse").value = v.pulse != null ? v.pulse : "";
+    $("#temp").value = v.temp != null ? v.temp : "";
+    $("#memo").value = prev.memo || "";
+
+    // UI 반영
+    $("#painLevel").value = draft.pain; $("#painValue").textContent = draft.pain;
+    $("#spasticity").value = draft.spasticity; $("#spasticityValue").textContent = draft.spasticity;
+    $("#urineCount").textContent = draft.urine; $("#bowelCount").textContent = draft.bowel;
+    updateMoodUI(); updateSkinUI();
+    renderExerciseItems(); renderExerciseList();
+    renderActivityItems(); renderActivityList();
+    $("#saveHint").textContent = fmtDate(prev.date) + " 기록을 불러왔어요. 수정 후 저장하세요.";
+    toast(fmtDate(prev.date) + " 기록을 불러왔어요");
   }
 
   /* ---- 운동: 카테고리/종목 버튼 ---- */
