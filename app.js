@@ -77,15 +77,25 @@
     { name: "전화/대화", icon: "📞" }, { name: "외출", icon: "🏞️" }
   ];
 
-  /* 종목명 → 카테고리 라벨/아이콘 조회 */
+  // 카테고리 미상일 때 쓰는 중립 라벨
+  var UNKNOWN_CAT = { id: "etc", label: "운동", icon: "💪" };
+
+  /* 종목명 → 카테고리 라벨/아이콘 조회
+     묶음 이름("A + B")도 처리: 묶음 안의 첫 종목으로 판정 */
   function exerciseCat(name) {
-    for (var i = 0; i < EXERCISE_CATALOG.length; i++) {
-      var c = EXERCISE_CATALOG[i];
-      if (c.items && c.items.indexOf(name) >= 0) return c;
-      // 근력(조합형): "상체/맨몸운동" 처럼 부위명으로 시작하면 근력으로 인식
-      if (c.mode === "combo" && c.bodyParts.some(function (bp) { return name.indexOf(bp) === 0; })) return c;
+    // 묶음이면 첫 종목만 떼서 판정
+    var first = String(name).split(" + ")[0].trim();
+
+    function match(n) {
+      for (var i = 0; i < EXERCISE_CATALOG.length; i++) {
+        var c = EXERCISE_CATALOG[i];
+        if (c.items && c.items.indexOf(n) >= 0) return c;
+        // 근력(조합형): "상체·하체 / 덤벨 운동" 처럼 부위명으로 시작하면 근력
+        if (c.mode === "combo" && c.bodyParts.some(function (bp) { return n.indexOf(bp) === 0; })) return c;
+      }
+      return null;
     }
-    return EXERCISE_CATALOG[EXERCISE_CATALOG.length - 1]; // 기타
+    return match(first) || match(name) || UNKNOWN_CAT;
   }
   function activityIcon(name) {
     var f = ACTIVITY_ITEMS.filter(function (a) { return a.name === name; })[0];
