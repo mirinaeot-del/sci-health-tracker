@@ -285,6 +285,21 @@ input[type="date"] {
 .mood-btn.selected { border-color: var(--primary); background: var(--primary-light); }
 .mood-btn.selected .mood-label { color: var(--primary); }
 
+/* 통증·경직 5단계 버튼 */
+.level-field { margin-bottom: 18px; }
+.level-field:last-child { margin-bottom: 0; }
+.level-field > label { display: block; font-weight: 600; margin-bottom: 8px; }
+.level-row { display: flex; gap: 6px; }
+.level-btn {
+  flex: 1; border: 2px solid var(--border); background: var(--card); border-radius: 14px;
+  padding: 10px 2px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer; transition: all 0.15s;
+}
+.level-face { font-size: 26px; line-height: 1; }
+.level-label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+.level-btn.selected { border-color: var(--primary); background: var(--primary-light); }
+.level-btn.selected .level-label { color: var(--primary); }
+
 .slider-field { margin-bottom: 20px; }
 .slider-field:last-child { margin-bottom: 0; }
 .slider-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }

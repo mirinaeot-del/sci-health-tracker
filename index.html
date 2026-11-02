@@ -274,21 +274,25 @@
           <!-- 통증 / 경직 -->
           <div class="card">
             <h2 class="card-title"><span aria-hidden="true">⚡</span> 통증 · 경직</h2>
-            <div class="slider-field">
-              <div class="slider-head">
-                <label for="painLevel">통증 정도</label>
-                <span class="slider-value" id="painValue">0</span>
+            <div class="level-field">
+              <label>통증 정도</label>
+              <div class="level-row" data-level="pain">
+                <button type="button" class="level-btn" data-value="4"><span class="level-face">😣</span><span class="level-label">매우심함</span></button>
+                <button type="button" class="level-btn" data-value="3"><span class="level-face">😖</span><span class="level-label">심함</span></button>
+                <button type="button" class="level-btn" data-value="2"><span class="level-face">😐</span><span class="level-label">보통</span></button>
+                <button type="button" class="level-btn" data-value="1"><span class="level-face">🙂</span><span class="level-label">조금</span></button>
+                <button type="button" class="level-btn" data-value="0"><span class="level-face">😄</span><span class="level-label">없음</span></button>
               </div>
-              <input type="range" id="painLevel" min="0" max="10" step="1" value="0" />
-              <div class="slider-scale"><span>없음 0</span><span>10 심함</span></div>
             </div>
-            <div class="slider-field">
-              <div class="slider-head">
-                <label for="spasticity">경직 정도</label>
-                <span class="slider-value" id="spasticityValue">0</span>
+            <div class="level-field">
+              <label>경직 정도</label>
+              <div class="level-row" data-level="spasticity">
+                <button type="button" class="level-btn" data-value="4"><span class="level-face">😣</span><span class="level-label">매우심함</span></button>
+                <button type="button" class="level-btn" data-value="3"><span class="level-face">😖</span><span class="level-label">심함</span></button>
+                <button type="button" class="level-btn" data-value="2"><span class="level-face">😐</span><span class="level-label">보통</span></button>
+                <button type="button" class="level-btn" data-value="1"><span class="level-face">🙂</span><span class="level-label">조금</span></button>
+                <button type="button" class="level-btn" data-value="0"><span class="level-face">😄</span><span class="level-label">없음</span></button>
               </div>
-              <input type="range" id="spasticity" min="0" max="10" step="1" value="0" />
-              <div class="slider-scale"><span>없음 0</span><span>10 심함</span></div>
             </div>
           </div>
 
@@ -352,30 +356,8 @@
           </div>
         </div>
 
-        <!-- 사이드: 활력징후 -->
+        <!-- 사이드: 저장 -->
         <aside class="record-side">
-          <div class="card">
-            <h2 class="card-title"><span aria-hidden="true">🩺</span> 활력징후 <span class="optional">(선택)</span></h2>
-            <div class="vitals-grid">
-              <div class="vital-field">
-                <label for="bpSys">혈압 (수축기)</label>
-                <input type="number" id="bpSys" inputmode="numeric" placeholder="120" />
-              </div>
-              <div class="vital-field">
-                <label for="bpDia">혈압 (이완기)</label>
-                <input type="number" id="bpDia" inputmode="numeric" placeholder="80" />
-              </div>
-              <div class="vital-field">
-                <label for="pulse">맥박</label>
-                <input type="number" id="pulse" inputmode="numeric" placeholder="72" />
-              </div>
-              <div class="vital-field">
-                <label for="temp">체온 (℃)</label>
-                <input type="number" id="temp" inputmode="decimal" step="0.1" placeholder="36.5" />
-              </div>
-            </div>
-          </div>
-
           <button type="button" class="btn-save" id="saveBtn">💾 오늘 기록 저장하기</button>
           <p class="save-hint" id="saveHint"></p>
         </aside>

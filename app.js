@@ -48,6 +48,8 @@
 
   var MOOD_FACES = { 1: "😣", 2: "😕", 3: "😐", 4: "🙂", 5: "😄" };
   var SKIN_LABELS = { good: "피부 이상 없음", redness: "피부 빨감", wound: "상처 있음" };
+  // 통증·경직 5단계 (0=없음 ~ 4=매우심함)
+  var LEVEL_LABELS = { 0: "없음", 1: "조금", 2: "보통", 3: "심함", 4: "매우심함" };
 
   /* 운동 카탈로그: 카테고리 → 종목 (SCI 참여자 재활 중심) */
   var EXERCISE_CATALOG = [
@@ -609,11 +611,15 @@
         updateMoodUI();
       });
     });
-    $("#painLevel").addEventListener("input", function (e) {
-      draft.pain = Number(e.target.value); $("#painValue").textContent = draft.pain;
+    $all('[data-level="pain"] .level-btn').forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        draft.pain = Number(btn.getAttribute("data-value")); updateLevelUI("pain");
+      });
     });
-    $("#spasticity").addEventListener("input", function (e) {
-      draft.spasticity = Number(e.target.value); $("#spasticityValue").textContent = draft.spasticity;
+    $all('[data-level="spasticity"] .level-btn').forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        draft.spasticity = Number(btn.getAttribute("data-value")); updateLevelUI("spasticity");
+      });
     });
     $all(".counter-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -651,16 +657,10 @@
       exercises: (prev.exercises || []).map(function (e) { return { type: e.type, minutes: e.minutes, intensity: e.intensity }; }),
       activities: (prev.activities || []).map(function (a) { return { name: a.name, minutes: a.minutes }; })
     };
-    var v = prev.vitals || {};
-    $("#bpSys").value = v.bpSys != null ? v.bpSys : "";
-    $("#bpDia").value = v.bpDia != null ? v.bpDia : "";
-    $("#pulse").value = v.pulse != null ? v.pulse : "";
-    $("#temp").value = v.temp != null ? v.temp : "";
     $("#memo").value = prev.memo || "";
 
     // UI 반영
-    $("#painLevel").value = draft.pain; $("#painValue").textContent = draft.pain;
-    $("#spasticity").value = draft.spasticity; $("#spasticityValue").textContent = draft.spasticity;
+    updateLevelUI("pain"); updateLevelUI("spasticity");
     $("#urineCount").textContent = draft.urine; $("#bowelCount").textContent = draft.bowel;
     updateMoodUI(); updateSkinUI();
     renderExerciseItems(); renderExerciseList();
@@ -857,6 +857,13 @@
       b.classList.toggle("selected", Number(b.getAttribute("data-mood")) === draft.mood);
     });
   }
+  /* 통증·경직 5단계 버튼 선택 반영 (which: "pain" | "spasticity") */
+  function updateLevelUI(which) {
+    var val = draft[which];
+    $all('[data-level="' + which + '"] .level-btn').forEach(function (b) {
+      b.classList.toggle("selected", Number(b.getAttribute("data-value")) === val);
+    });
+  }
   function updateSkinUI() {
     $all('[data-choice="skin"] .choice-btn').forEach(function (b) {
       b.classList.toggle("selected", b.getAttribute("data-value") === draft.skin);
@@ -938,17 +945,12 @@
     Store.saveRecord({
       date: date, mood: draft.mood, pain: draft.pain, spasticity: draft.spasticity,
       urine: draft.urine, bowel: draft.bowel, skin: draft.skin,
-      vitals: {
-        bpSys: numOrNull("#bpSys"), bpDia: numOrNull("#bpDia"),
-        pulse: numOrNull("#pulse"), temp: numOrNull("#temp")
-      },
       exercises: draft.exercises.slice(), activities: draft.activities.slice(),
       memo: $("#memo").value.trim()
     });
     $("#saveHint").textContent = "✓ " + fmtDate(date) + " 기록이 저장되었어요.";
     toast("저장 완료!");
   }
-  function numOrNull(sel) { var v = $(sel).value; return v ? Number(v) : null; }
 
   function loadDraftForDate() {
     var date = $("#recordDate").value || todayStr();
@@ -960,19 +962,12 @@
       draft.urine = r.urine || 0; draft.bowel = r.bowel || 0;
       draft.skin = r.skin || null; draft.exercises = (r.exercises || []).slice();
       draft.activities = (r.activities || []).slice();
-      var v = r.vitals || {};
-      $("#bpSys").value = v.bpSys != null ? v.bpSys : "";
-      $("#bpDia").value = v.bpDia != null ? v.bpDia : "";
-      $("#pulse").value = v.pulse != null ? v.pulse : "";
-      $("#temp").value = v.temp != null ? v.temp : "";
       $("#memo").value = r.memo || "";
       $("#saveHint").textContent = "이 날짜에 저장된 기록을 불러왔어요. 수정 후 다시 저장할 수 있어요.";
     } else {
-      $("#bpSys").value = ""; $("#bpDia").value = ""; $("#pulse").value = ""; $("#temp").value = "";
       $("#memo").value = ""; $("#saveHint").textContent = "";
     }
-    $("#painLevel").value = draft.pain; $("#painValue").textContent = draft.pain;
-    $("#spasticity").value = draft.spasticity; $("#spasticityValue").textContent = draft.spasticity;
+    updateLevelUI("pain"); updateLevelUI("spasticity");
     $("#urineCount").textContent = draft.urine; $("#bowelCount").textContent = draft.bowel;
     updateMoodUI(); updateSkinUI();
     renderExerciseItems(); renderExerciseList();
@@ -992,9 +987,9 @@
     container.innerHTML = "";
     list.forEach(function (r) {
       var tags = [];
-      tags.push(r.pain >= 4 ? '<span class="tag alert">통증 ' + r.pain + '</span>'
-        : '<span class="tag">통증 ' + (r.pain || 0) + '</span>');
-      if (r.spasticity >= 4) tags.push('<span class="tag alert">경직 ' + r.spasticity + '</span>');
+      tags.push((r.pain >= 3) ? '<span class="tag alert">통증 ' + LEVEL_LABELS[r.pain] + '</span>'
+        : '<span class="tag">통증 ' + LEVEL_LABELS[r.pain || 0] + '</span>');
+      if (r.spasticity >= 3) tags.push('<span class="tag alert">경직 ' + LEVEL_LABELS[r.spasticity] + '</span>');
       if (r.skin && r.skin !== "good") tags.push('<span class="tag alert">' + SKIN_LABELS[r.skin] + '</span>');
       tags.push('<span class="tag">소변 ' + (r.urine || 0) + ' · 배변 ' + (r.bowel || 0) + '</span>');
       if (r.exercises && r.exercises.length) {
@@ -1005,7 +1000,6 @@
         var am = r.activities.reduce(function (s, a) { return s + (a.minutes || 0); }, 0);
         tags.push('<span class="tag activity">🗓️ 활동 ' + r.activities.length + '개' + (am ? ' · ' + am + '분' : '') + '</span>');
       }
-      if (r.vitals && r.vitals.bpSys) tags.push('<span class="tag">혈압 ' + r.vitals.bpSys + '/' + (r.vitals.bpDia || "-") + '</span>');
 
       var card = el("div", "history-card",
         '<div class="history-card-head">' +
@@ -1048,9 +1042,8 @@
   function exportCSV() {
     var list = Store.listRecords().slice().reverse();
     if (!list.length) { toast("내보낼 기록이 없어요"); return; }
-    var headers = ["날짜", "컨디션(1-5)", "통증(0-10)", "경직(0-10)", "소변횟수", "배변횟수",
-      "피부상태", "혈압수축기", "혈압이완기", "맥박", "체온",
-      "운동", "운동시간(분)", "활동", "활동시간(분)", "메모"];
+    var headers = ["날짜", "컨디션(1-5)", "통증", "경직", "소변횟수", "배변횟수",
+      "피부상태", "운동", "운동시간(분)", "활동", "활동시간(분)", "메모"];
     var rows = [headers];
     list.forEach(function (r) {
       var exNames = (r.exercises || []).map(function (e) {
@@ -1061,12 +1054,11 @@
         return a.name + (a.minutes ? "(" + a.minutes + "분)" : "");
       }).join(" | ");
       var actMin = (r.activities || []).reduce(function (s, a) { return s + (a.minutes || 0); }, 0);
-      var v = r.vitals || {};
-      rows.push([r.date, r.mood != null ? r.mood : "", r.pain != null ? r.pain : "",
-        r.spasticity != null ? r.spasticity : "", r.urine != null ? r.urine : "",
-        r.bowel != null ? r.bowel : "", r.skin ? SKIN_LABELS[r.skin] : "",
-        v.bpSys != null ? v.bpSys : "", v.bpDia != null ? v.bpDia : "",
-        v.pulse != null ? v.pulse : "", v.temp != null ? v.temp : "",
+      rows.push([r.date, r.mood != null ? r.mood : "",
+        r.pain != null ? LEVEL_LABELS[r.pain] : "",
+        r.spasticity != null ? LEVEL_LABELS[r.spasticity] : "",
+        r.urine != null ? r.urine : "", r.bowel != null ? r.bowel : "",
+        r.skin ? SKIN_LABELS[r.skin] : "",
         exNames, totMin || "", actNames, actMin || "", (r.memo || "").replace(/\n/g, " ")]);
     });
     var csv = rows.map(function (row) {
@@ -1181,7 +1173,7 @@
     var actMin = mrecs.reduce(function (s, r) { return s + sumActMin(r); }, 0);
     var exDays = mrecs.filter(function (r) { return r.exercises && r.exercises.length; }).length;
     var pains = mrecs.filter(function (r) { return r.pain != null; }).map(function (r) { return r.pain; });
-    var avgPain = pains.length ? (pains.reduce(function (a, b) { return a + b; }) / pains.length).toFixed(1) : "–";
+    var avgPain = pains.length ? LEVEL_LABELS[Math.round(pains.reduce(function (a, b) { return a + b; }) / pains.length)] : "–";
     var moods = mrecs.filter(function (r) { return r.mood != null; }).map(function (r) { return r.mood; });
     var avgMood = moods.length ? MOOD_FACES[Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length)] : "–";
 
@@ -1266,7 +1258,7 @@
       var val = 0, label = "", max = 1;
       if (trendMetric === "exercise") { val = r ? sumExMin(r) : 0; max = 60; label = val ? val + "분" : ""; }
       else if (trendMetric === "mood") { val = r && r.mood != null ? r.mood : 0; max = 5; label = val ? String(val) : ""; }
-      else if (trendMetric === "pain") { val = r && r.pain != null ? r.pain : 0; max = 10; label = (r && r.pain != null) ? String(val) : ""; }
+      else if (trendMetric === "pain") { val = r && r.pain != null ? r.pain : 0; max = 4; label = (r && r.pain != null) ? LEVEL_LABELS[val] : ""; }
       cols.push({ iso: iso, val: val, label: label, max: max, d: d });
     }
     var maxVal = Math.max.apply(null, cols.map(function (c) { return c.val; }).concat([cols[0].max]));
@@ -1390,11 +1382,11 @@
 
     // 2) 최근 3일 통증 추세 (최근 기록 기준)
     var recent = recs.slice(0, 3);
-    var highPain = recent.filter(function (r) { return r.pain != null && r.pain >= 6; });
+    var highPain = recent.filter(function (r) { return r.pain != null && r.pain >= 3; }); // 심함 이상
     if (highPain.length >= 2) {
-      alerts.push({ level: "warn", icon: "⚡", title: "통증이 높은 날이 이어지고 있어요", desc: "최근 통증 점수가 6 이상인 날이 " + highPain.length + "일 있어요. 무리하지 말고 담당 의료진과 상의해 보세요." });
-    } else if (recent[0] && recent[0].pain != null && recent[0].pain >= 8) {
-      alerts.push({ level: "warn", icon: "⚡", title: "오늘 통증이 심해요", desc: "통증 " + recent[0].pain + "점. 자세·휴식을 점검하고 필요 시 도움을 요청하세요." });
+      alerts.push({ level: "warn", icon: "⚡", title: "통증이 높은 날이 이어지고 있어요", desc: "최근 통증이 '심함' 이상인 날이 " + highPain.length + "일 있어요. 무리하지 말고 담당 의료진과 상의해 보세요." });
+    } else if (recent[0] && recent[0].pain != null && recent[0].pain >= 4) {
+      alerts.push({ level: "warn", icon: "⚡", title: "오늘 통증이 심해요", desc: "통증 '" + LEVEL_LABELS[recent[0].pain] + "'. 자세·휴식을 점검하고 필요 시 도움을 요청하세요." });
     }
 
     // 3) 욕창(피부) 이상
@@ -1414,8 +1406,8 @@
     }
 
     // 5) 경직 높음
-    if (recent[0] && recent[0].spasticity != null && recent[0].spasticity >= 7) {
-      alerts.push({ level: "warn", icon: "🌀", title: "경직이 심한 편이에요", desc: "경직 " + recent[0].spasticity + "점. 스트레칭·자세 관리를 신경 써 주세요." });
+    if (recent[0] && recent[0].spasticity != null && recent[0].spasticity >= 3) {
+      alerts.push({ level: "warn", icon: "🌀", title: "경직이 심한 편이에요", desc: "경직 '" + LEVEL_LABELS[recent[0].spasticity] + "'. 스트레칭·자세 관리를 신경 써 주세요." });
     }
 
     // 긍정 메시지 (알림이 없을 때)
