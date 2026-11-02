@@ -56,6 +56,7 @@ body {
 }
 .nav-item:hover { background: rgba(255,255,255,0.12); color: #fff; }
 .nav-item.active { background: var(--accent); color: #1f2937; }
+.nav-short { display: none; }  /* 모바일 전용 짧은 라벨 (데스크톱 숨김) */
 
 .user-chip {
   display: flex; align-items: center; gap: 8px;
@@ -384,9 +385,9 @@ textarea { resize: vertical; }
   background: #f8fafc; border: 1px solid var(--border); border-left: 4px solid var(--primary-2);
   border-radius: 12px; padding: 10px 12px;
 }
-.pr-info { display: flex; flex-direction: column; min-width: 0; }
+.pr-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .pr-cat { font-size: 12px; color: var(--text-muted); font-weight: 600; }
-.pr-name { font-weight: 700; font-size: 15px; }
+.pr-name { font-weight: 700; font-size: 15px; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.35; }
 .pr-ctrl { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .pr-min { width: 60px; padding: 8px 8px; text-align: center; font-size: 15px; }
 .pr-unit { font-size: 13px; color: var(--text-muted); }
@@ -576,12 +577,29 @@ textarea { resize: vertical; }
   .monthly-top { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
-  .topnav-inner { flex-wrap: wrap; height: auto; padding: 10px 14px; gap: 10px; }
-  .brand { order: 1; }
-  .user-chip { order: 2; margin-left: auto; }
-  .nav-menu { order: 3; width: 100%; overflow-x: auto; justify-content: flex-start; gap: 2px; padding-bottom: 2px; }
-  .nav-item { padding: 8px 12px; font-size: 14px; }
-  .page { padding: 20px 14px 50px; }
+  /* 상단엔 브랜드 + 계정만, 메뉴는 하단 탭바로 이동 */
+  .topnav-inner { height: 54px; padding: 0 14px; justify-content: space-between; }
+  .brand-name { font-size: 16px; }
+  .nav-menu {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
+    background: #fff; border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 12px rgba(15,23,42,0.08);
+    display: flex; justify-content: space-around; align-items: stretch;
+    gap: 0; padding: 4px 2px calc(4px + env(safe-area-inset-bottom));
+    overflow-x: auto;
+  }
+  .nav-item {
+    flex-direction: column; gap: 2px; padding: 6px 4px; min-width: 52px;
+    font-size: 11px; font-weight: 700; border-radius: 10px; flex: 1;
+    border-bottom: none; color: var(--text-muted);
+  }
+  .nav-ico { font-size: 20px; line-height: 1.1; }
+  .nav-full { display: none; }      /* 모바일에선 긴 라벨 숨김 */
+  .nav-short { display: block; }    /* 짧은 라벨 표시 */
+  .nav-item.active { background: var(--primary-light); color: var(--primary); }
+  /* 하단 탭바 높이만큼 본문 여백 확보 */
+  .page { padding: 18px 14px 90px; }
+
   .view-title { font-size: 22px; }
   .survey-options { grid-template-columns: repeat(5, 1fr); gap: 4px; }
   .survey-opt { padding: 10px 2px; }
@@ -589,8 +607,20 @@ textarea { resize: vertical; }
   .profile-grid { grid-template-columns: 1fr; }
   .total-compare { gap: 12px; }
   .tc-score { font-size: 30px; }
+
+  /* 추가된 운동/활동 항목: 이름 줄 → 컨트롤 줄 (세로 글자 깨짐 해결) */
+  .picker-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .pr-info { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+  .pr-name { font-size: 15px; }
+  .pr-ctrl { justify-content: flex-end; }
+  .pr-min { width: 64px; }
+
+  /* 드롭다운이 화면 밖으로 안 나가게 */
+  .user-name { max-width: 70px; }
 }
 @media (max-width: 420px) {
   .survey-options { grid-template-columns: repeat(5, 1fr); }
   .opt-score { width: 22px; height: 22px; font-size: 12px; }
+  .nav-item { font-size: 10px; min-width: 44px; }
+  .nav-ico { font-size: 18px; }
 }
