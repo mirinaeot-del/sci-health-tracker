@@ -1580,36 +1580,149 @@
     });
   }
 
+  var adminDetailData = null; // CSV 내보내기용 현재 대상자 캐시
+
   function adminDetail(u) {
     $("#adminDetailCard").hidden = false;
     $("#adminDetailName").textContent = (u.name || u.nickname || "참여자");
     var body = $("#adminDetailBody");
     body.innerHTML = '<p class="card-help">불러오는 중...</p>';
     Promise.all([Store.fetchUserRecords(u.id), Store.fetchUserSurveys(u.id)]).then(function (res) {
-      var recs = res[0].slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+      var recs = res[0].slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }); // 최신순
+      var asc = recs.slice().reverse(); // 과거→현재 (추이/성장용)
       var surveys = res[1];
+      adminDetailData = { user: u, records: recs };
+
+      var exMin = function (r) { return (r.exercises || []).reduce(function (s, e) { return s + (e.minutes || 0); }, 0); };
+      var actMin = function (r) { return (r.activities || []).reduce(function (s, a) { return s + (a.minutes || 0); }, 0); };
+
+      // ----- 요약 통계 -----
+      var totalEx = recs.reduce(function (s, r) { return s + exMin(r); }, 0);
+      var totalAct = recs.reduce(function (s, r) { return s + actMin(r); }, 0);
+      var exDays = recs.filter(function (r) { return r.exercises && r.exercises.length; }).length;
+      var moods = recs.filter(function (r) { return r.mood != null; }).map(function (r) { return r.mood; });
+      var avgMood = moods.length ? MOOD_FACES[Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length)] : "–";
+      var pains = recs.filter(function (r) { return r.pain != null; }).map(function (r) { return r.pain; });
+      var avgPain = pains.length ? LEVEL_LABELS[Math.round(pains.reduce(function (a, b) { return a + b; }) / pains.length)] : "–";
+      // 성장 점수 (간이: 기록일*20 + 연속보너스 생략, 운동 증가 가산)
+      var growth = recs.length * 20;
+
       var html = "";
-      html += '<div class="admin-detail-meta">이름: ' + escapeHtml(u.name || "-") +
+
+      // 메타 + CSV 버튼
+      html += '<div class="admin-detail-head">' +
+        '<div class="admin-detail-meta">이름: ' + escapeHtml(u.name || "-") +
         ' · 닉네임: ' + escapeHtml(u.nickname || "-") +
         ' · 아이디: ' + escapeHtml(u.username || "-") +
         ' · 손상: ' + escapeHtml(u.injury_level || "-") + "/" + escapeHtml(u.injury_degree || "-") +
-        ' · 발병일: ' + escapeHtml(u.onset_date || "-") + '</div>';
+        ' · 발병일: ' + escapeHtml(u.onset_date || "-") + '</div>' +
+        '<button class="btn-outline btn-sm" id="adminExportBtn">⬇️ 이 참여자 CSV</button></div>';
+
+      // 요약 카드 그리드
+      html += '<div class="admin-stat-grid">' +
+        adminStat("📝", recs.length, "기록일") +
+        adminStat("💪", totalEx + "분", "누적 운동") +
+        adminStat("🗓️", totalAct + "분", "누적 활동") +
+        adminStat("📆", exDays + "일", "운동한 날") +
+        adminStat("⚡", avgPain, "평균 통증") +
+        adminStat("🙂", avgMood, "평균 컨디션") +
+      '</div>';
+
+      // ----- 기능평가 변화 -----
       if (surveys.length) {
-        var latest = surveys[surveys.length - 1];
-        html += '<p style="margin:10px 0;"><b>기능평가</b> ' + surveys.length + '회 · 최근 점수 ' + SurveyData.totalPercent(latest.answers) + '점</p>';
+        var first = surveys[0], latest = surveys[surveys.length - 1];
+        var basePct = SurveyData.totalPercent(first.answers);
+        var latestPct = SurveyData.totalPercent(latest.answers);
+        var dPct = latestPct - basePct;
+        html += '<h3 class="admin-sub">📋 기능평가</h3>';
+        html += '<p class="admin-line">총 <b>' + surveys.length + '회</b> 평가 · ';
+        if (surveys.length >= 2) {
+          html += '초기 <b>' + basePct + '점</b> → 최근 <b>' + latestPct + '점</b> ' +
+            '<span class="chg ' + (dPct > 0 ? 'up' : dPct < 0 ? 'down' : 'same') + '">' + (dPct > 0 ? '▲ +' + dPct : dPct < 0 ? '▼ ' + dPct : '– 0') + '점</span>';
+        } else {
+          html += '최근 점수 <b>' + latestPct + '점</b> (재평가 시 변화 비교 가능)';
+        }
+        html += '</p>';
+        // 섹션별 변화 (2회 이상일 때)
+        if (surveys.length >= 2) {
+          html += '<div class="admin-sec-changes">';
+          SurveyData.sections.forEach(function (sec) {
+            var bs = SurveyData.sectionScore(sec, first.answers);
+            var ts = SurveyData.sectionScore(sec, latest.answers);
+            var d = ts - bs;
+            html += '<span class="admin-sec-chip ' + (d > 0 ? 'up' : d < 0 ? 'down' : 'same') + '">' +
+              sec.icon + ' ' + sec.title + ' ' + (d > 0 ? '+' + d : d) + '</span>';
+          });
+          html += '</div>';
+        }
       }
-      html += '<p style="margin:10px 0;"><b>기록</b> 총 ' + recs.length + '건</p>';
-      html += '<div class="table-scroll"><table class="admin-table"><thead><tr><th>날짜</th><th>통증</th><th>경직</th><th>운동(분)</th><th>활동(분)</th><th>메모</th></tr></thead><tbody>';
-      recs.slice(0, 30).forEach(function (r) {
-        var exm = (r.exercises || []).reduce(function (s, e) { return s + (e.minutes || 0); }, 0);
-        var acm = (r.activities || []).reduce(function (s, a) { return s + (a.minutes || 0); }, 0);
-        html += '<tr><td>' + fmtDate(r.date) + '</td><td>' + (LEVEL_LABELS[r.pain || 0]) + '</td><td>' + (LEVEL_LABELS[r.spasticity || 0]) +
-          '</td><td>' + exm + '</td><td>' + acm + '</td><td>' + escapeHtml((r.memo || "").slice(0, 30)) + '</td></tr>';
+
+      // ----- 일일 기록 상세 (종목명 포함) -----
+      html += '<h3 class="admin-sub">📒 일일 기록 (' + recs.length + '건)</h3>';
+      html += '<div class="table-scroll"><table class="admin-table admin-rec-table"><thead><tr>' +
+        '<th>날짜</th><th>컨디션</th><th>통증</th><th>경직</th><th>소변</th><th>배변</th><th>피부</th><th>운동</th><th>활동</th><th>메모</th>' +
+        '</tr></thead><tbody>';
+      if (!recs.length) {
+        html += '<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--text-muted);">기록이 없습니다.</td></tr>';
+      }
+      recs.forEach(function (r) {
+        var exList = (r.exercises || []).map(function (e) {
+          return escapeHtml(e.type) + (e.minutes ? "(" + e.minutes + "분)" : "");
+        }).join(", ");
+        var acList = (r.activities || []).map(function (a) {
+          return escapeHtml(a.name) + (a.minutes ? "(" + a.minutes + "분)" : "");
+        }).join(", ");
+        html += '<tr>' +
+          '<td>' + fmtDate(r.date) + '</td>' +
+          '<td>' + (r.mood != null ? MOOD_FACES[r.mood] : "-") + '</td>' +
+          '<td>' + LEVEL_LABELS[r.pain || 0] + '</td>' +
+          '<td>' + LEVEL_LABELS[r.spasticity || 0] + '</td>' +
+          '<td>' + (r.urine || 0) + '</td>' +
+          '<td>' + (r.bowel || 0) + '</td>' +
+          '<td>' + (r.skin ? escapeHtml(SKIN_LABELS[r.skin]) : "-") + '</td>' +
+          '<td class="cell-wide">' + (exList || "-") + '</td>' +
+          '<td class="cell-wide">' + (acList || "-") + '</td>' +
+          '<td class="cell-wide">' + escapeHtml(r.memo || "") + '</td>' +
+          '</tr>';
       });
       html += '</tbody></table></div>';
+
       body.innerHTML = html;
+      $("#adminExportBtn").addEventListener("click", function () { exportUserCSV(u, recs); });
       $("#adminDetailCard").scrollIntoView({ behavior: "smooth", block: "start" });
     }).catch(function (ex) { body.innerHTML = '<p class="card-help">불러오기 실패</p>'; console.error(ex); });
+  }
+
+  function adminStat(icon, num, label) {
+    return '<div class="admin-stat"><div class="as-icon">' + icon + '</div>' +
+      '<div class="as-num">' + num + '</div><div class="as-lbl">' + label + '</div></div>';
+  }
+
+  /* 관리자: 특정 참여자 기록 CSV 내보내기 */
+  function exportUserCSV(u, recs) {
+    if (!recs.length) { toast("내보낼 기록이 없어요"); return; }
+    var headers = ["날짜", "컨디션(1-5)", "통증", "경직", "소변횟수", "배변횟수", "피부상태", "운동", "운동시간(분)", "활동", "활동시간(분)", "메모"];
+    var rows = [headers];
+    recs.slice().reverse().forEach(function (r) {
+      var exNames = (r.exercises || []).map(function (e) { return e.type + (e.minutes ? "(" + e.minutes + "분/" + e.intensity + ")" : ""); }).join(" | ");
+      var totMin = (r.exercises || []).reduce(function (s, e) { return s + (e.minutes || 0); }, 0);
+      var acNames = (r.activities || []).map(function (a) { return a.name + (a.minutes ? "(" + a.minutes + "분)" : ""); }).join(" | ");
+      var acMin = (r.activities || []).reduce(function (s, a) { return s + (a.minutes || 0); }, 0);
+      rows.push([r.date, r.mood != null ? r.mood : "",
+        r.pain != null ? LEVEL_LABELS[r.pain] : "", r.spasticity != null ? LEVEL_LABELS[r.spasticity] : "",
+        r.urine != null ? r.urine : "", r.bowel != null ? r.bowel : "", r.skin ? SKIN_LABELS[r.skin] : "",
+        exNames, totMin || "", acNames, acMin || "", (r.memo || "").replace(/\n/g, " ")]);
+    });
+    var csv = rows.map(function (row) {
+      return row.map(function (c) { var s = String(c); return (/[",\n]/.test(s)) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(",");
+    }).join("\n");
+    var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    var a = el("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "건강기록_" + (u.nickname || u.name || u.username) + "_" + todayStr() + ".csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast("CSV 파일을 저장했어요");
   }
 
   /* =========================================================
