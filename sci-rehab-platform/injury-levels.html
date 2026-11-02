@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>손상수준별 재활 가이드 | 척수손상 재활 플랫폼</title>
+  <meta name="description" content="경수·흉수·요수 손상수준(C1~L1 이하)별 주요 기능, 일상생활활동, 재활 방향과 관련 교육자료를 안내합니다." />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <main id="main">
+    <div class="page-head">
+      <div class="container">
+        <p class="breadcrumb"><a href="index.html">홈</a> › 손상수준 가이드</p>
+        <h1>손상수준별 재활 가이드</h1>
+        <p class="section-sub">나의 손상수준을 선택하면 주요 기능·일상생활·재활 방향과 관련 교육자료를 볼 수 있습니다.</p>
+      </div>
+    </div>
+
+    <section style="padding-top:8px;">
+      <div class="container">
+        <h2 class="section-title">손상수준을 선택하세요</h2>
+        <div class="grid grid-4" id="level-grid" role="list"></div>
+
+        <div id="level-detail" aria-live="polite"></div>
+
+        <div class="notice warn" id="unknown-help" style="margin-top:24px;"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/app.js"></script>
+  <script>
+    (async function () {
+      SCIChrome.init("injury-levels.html");
+      const { AREA_LABELS, TYPE_LABELS } = SCILabels;
+
+      const data = await SCIStore.getInjuryLevels();
+      const levels = data.levels;
+      const content = await SCIStore.getContent();
+
+      const grid = document.getElementById("level-grid");
+      const detail = document.getElementById("level-detail");
+      document.getElementById("unknown-help").appendChild(
+        el("span", {}, [el("strong", {}, "손상수준을 모르시나요?"), data.unknownHelp])
+      );
+
+      function relatedContent(levelId) {
+        return content.filter((c) =>
+          c.visibility !== "hidden" &&
+          (c.injury_level.includes(levelId) || c.injury_level.includes("all"))
+        );
+      }
+
+      function list(title, items) {
+        return el("div", {}, [
+          el("h4", { style: "margin:0 0 6px;color:var(--color-primary-dark);" }, title),
+          el("ul", { style: "margin:0;padding-left:18px;" }, items.map((i) => el("li", {}, i))),
+        ]);
+      }
+
+      function renderDetail(lv) {
+        detail.innerHTML = "";
+        const rel = relatedContent(lv.id);
+        const relList = el("div", { class: "grid grid-2", style: "margin-top:12px;" },
+          rel.length
+            ? rel.map((c) => el("a", { class: "tile", href: `library.html?focus=${c.content_id}` }, [
+                el("strong", {}, c.title),
+                el("span", { class: "desc" }, c.description),
+                el("div", { class: "badges" }, [
+                  el("span", { class: "badge type" }, TYPE_LABELS[c.type] || c.type),
+                  ...c.area.slice(0, 2).map((a) => el("span", { class: "badge area" }, AREA_LABELS[a] || a)),
+                ]),
+              ]))
+            : [el("p", { class: "section-sub" }, "연결된 공개 교육자료가 아직 없습니다.")]
+        );
+
+        detail.appendChild(el("div", { class: "stage-detail" }, [
+          el("h2", { style: "margin-top:0;" }, `${lv.label} 손상 (${lv.group})`),
+          el("p", {}, lv.summary),
+          el("div", { class: "grid grid-3", style: "margin:12px 0;" }, [
+            list("주요 기능", lv.keyFunctions),
+            list("주요 일상생활(ADL)", lv.keyADL),
+            list("주요 재활 방향", lv.keyRehab),
+          ]),
+          el("a", { class: "btn btn-solid", href: `library.html?level=${encodeURIComponent(lv.id)}` }, `${lv.label} 관련 자료 모두 보기`),
+          el("h3", { style: "margin-bottom:0;" }, "관련 교육자료"),
+          relList,
+        ]));
+        detail.scrollIntoView({ block: "nearest" });
+      }
+
+      levels.forEach((lv) => {
+        grid.appendChild(el("button", {
+          class: "tile", type: "button", role: "listitem", id: `lv-${lv.id}`,
+          onclick: () => {
+            grid.querySelectorAll(".tile").forEach((b) => b.style.borderColor = "");
+            grid.querySelector(`#lv-${CSS.escape(lv.id)}`).style.borderColor = "var(--color-primary)";
+            renderDetail(lv);
+          },
+        }, [
+          el("strong", { style: "font-size:1.2rem;" }, lv.label),
+          el("span", { class: "desc" }, lv.group),
+        ]));
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SCI 재활 여정 | 척수손상 재활 플랫폼</title>
+  <meta name="description" content="급성기부터 지역사회 복귀·장기관리까지, 척수손상 재활의 단계별 목표와 치료·교육·보호자 역할을 안내합니다." />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <main id="main">
+    <div class="page-head">
+      <div class="container">
+        <p class="breadcrumb"><a href="index.html">홈</a> › 재활 여정</p>
+        <h1>SCI 재활 여정</h1>
+        <p class="section-sub">지금 나의 단계를 선택하면 그 단계의 목표·평가·치료·교육·보호자 역할과 준비사항을 볼 수 있습니다.</p>
+      </div>
+    </div>
+
+    <section style="padding-top:8px;">
+      <div class="container">
+        <div class="journey" id="journey" role="list"></div>
+        <div id="stage-detail" aria-live="polite"></div>
+
+        <div class="notice info" style="margin-top:24px;">
+          <strong>내 단계를 잘 모르겠다면?</strong>
+          현재 재활 단계는 담당 의료진이 상태에 따라 판단합니다. 확실하지 않다면 담당 치료사·의료진에게 확인하세요.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/app.js"></script>
+  <script>
+    (async function () {
+      SCIChrome.init("journey.html");
+      const { AREA_LABELS, TYPE_LABELS } = SCILabels;
+
+      const stages = await SCIStore.getJourney();
+      const content = await SCIStore.getContent();
+      const wrap = document.getElementById("journey");
+      const detail = document.getElementById("stage-detail");
+
+      function relatedContent(stageId) {
+        return content.filter((c) =>
+          c.visibility !== "hidden" &&
+          (c.stage.includes(stageId) || c.stage.includes("all"))
+        );
+      }
+
+      function renderDetail(s) {
+        detail.innerHTML = "";
+        const rel = relatedContent(s.id);
+
+        const dl = el("dl", {}, [
+          el("dt", {}, "단계 목표"), el("dd", {}, s.goal),
+          el("dt", {}, "주요 평가"), el("dd", {}, s.assessment.join(", ")),
+          el("dt", {}, "주요 치료"), el("dd", {}, s.treatment.join(", ")),
+          el("dt", {}, "교육"), el("dd", {}, s.education.join(", ")),
+          el("dt", {}, "보호자 역할"), el("dd", {}, s.caregiverRole),
+          el("dt", {}, "준비사항"), el("dd", {}, s.prepare.join(", ")),
+        ]);
+
+        const relList = el("div", { class: "grid grid-2", style: "margin-top:16px;" },
+          rel.length
+            ? rel.map((c) => el("a", { class: "tile", href: `library.html?focus=${c.content_id}` }, [
+                el("strong", {}, c.title),
+                el("span", { class: "desc" }, c.description),
+                el("div", { class: "badges" }, [
+                  el("span", { class: "badge type" }, TYPE_LABELS[c.type] || c.type),
+                  ...c.area.slice(0, 2).map((a) => el("span", { class: "badge area" }, AREA_LABELS[a] || a)),
+                ]),
+              ]))
+            : [el("p", { class: "section-sub" }, "이 단계에 연결된 공개 교육자료가 아직 없습니다.")]
+        );
+
+        detail.appendChild(el("div", { class: "stage-detail" }, [
+          el("h2", { style: "margin-top:0;" }, `${s.order}. ${s.label}`),
+          dl,
+          el("h3", { style: "margin-bottom:0;" }, "이 단계의 교육자료"),
+          relList,
+        ]));
+        detail.scrollIntoView({ block: "nearest" });
+      }
+
+      stages.forEach((s) => {
+        const btn = el("button", {
+          class: "step", type: "button", role: "listitem",
+          id: s.id, "aria-expanded": "false",
+          onclick: () => {
+            wrap.querySelectorAll(".step").forEach((b) => b.setAttribute("aria-expanded", "false"));
+            btn.setAttribute("aria-expanded", "true");
+            renderDetail(s);
+          },
+        }, [
+          el("div", { class: "num", "aria-hidden": "true" }, String(s.order)),
+          el("h3", {}, s.label),
+          el("div", { class: "goal" }, s.goal),
+        ]);
+        wrap.appendChild(btn);
+      });
+
+      // URL 해시(#stageId)로 진입 시 해당 단계 자동 열기
+      const hash = decodeURIComponent(location.hash.replace("#", ""));
+      const initial = stages.find((s) => s.id === hash) || stages[0];
+      const initialBtn = document.getElementById(initial.id);
+      if (initialBtn) { initialBtn.setAttribute("aria-expanded", "true"); renderDetail(initial); }
+    })();
+  </script>
+</body>
+</html>

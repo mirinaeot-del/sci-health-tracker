@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>교육자료실 | 척수손상 재활 플랫폼</title>
+  <meta name="description" content="대상·영역·손상수준·재활단계로 필터링하고 검색할 수 있는 척수손상 재활 교육자료실." />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <main id="main">
+    <div class="page-head">
+      <div class="container">
+        <p class="breadcrumb"><a href="index.html">홈</a> › 교육자료실</p>
+        <h1>교육자료실</h1>
+        <p class="section-sub">필요한 조건으로 자료를 찾아보세요. 여러 조건을 함께 선택하면 나에게 맞는 자료만 보여줍니다.</p>
+      </div>
+    </div>
+
+    <section style="padding-top:8px;">
+      <div class="container">
+        <!-- focus 상세 -->
+        <div id="focus-detail" aria-live="polite"></div>
+
+        <!-- 검색/필터 -->
+        <div class="filters" role="search">
+          <label for="q" class="sr-only">교육자료 검색</label>
+          <input id="q" class="search-box" type="search" placeholder="검색어를 입력하세요 (예: C6, 착의, 휠체어, 피부)" autocomplete="off" />
+          <div class="row" style="margin-top:16px;">
+            <fieldset>
+              <legend>대상</legend>
+              <div class="chip-group" id="f-audience"></div>
+            </fieldset>
+            <fieldset>
+              <legend>영역</legend>
+              <div class="chip-group" id="f-area"></div>
+            </fieldset>
+          </div>
+          <div class="row" style="margin-top:16px;">
+            <fieldset>
+              <legend>손상수준</legend>
+              <div class="chip-group" id="f-level"></div>
+            </fieldset>
+            <fieldset>
+              <legend>재활단계</legend>
+              <div class="chip-group" id="f-stage"></div>
+            </fieldset>
+          </div>
+          <div style="margin-top:14px;">
+            <button type="button" class="btn btn-solid" id="reset">필터 초기화</button>
+          </div>
+        </div>
+
+        <p class="result-count" id="count" aria-live="polite"></p>
+        <div class="grid grid-2" id="results"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/app.js"></script>
+  <script>
+    (async function () {
+      SCIChrome.init("library.html");
+      const { AREA_LABELS, AUDIENCE_LABELS, TYPE_LABELS, STATUS_LABELS } = SCILabels;
+
+      const content = (await SCIStore.getContent()).filter((c) => c.visibility !== "hidden");
+      const injuryData = await SCIStore.getInjuryLevels();
+      const journey = await SCIStore.getJourney();
+
+      // 활성 필터 상태 (Set)
+      const state = { q: "", audience: new Set(), area: new Set(), level: new Set(), stage: new Set() };
+
+      // URL 쿼리파라미터로 초기 필터 세팅
+      const params = new URLSearchParams(location.search);
+      if (params.get("audience")) state.audience.add(params.get("audience"));
+      if (params.get("area")) state.area.add(params.get("area"));
+      if (params.get("level")) state.level.add(params.get("level"));
+      if (params.get("stage")) state.stage.add(params.get("stage"));
+      const focusId = params.get("focus");
+
+      // 칩 그룹 구성
+      function buildChips(containerId, options, stateKey) {
+        const box = document.getElementById(containerId);
+        options.forEach(([value, label]) => {
+          const active = state[stateKey].has(value);
+          const chip = el("button", {
+            class: "chip", type: "button", "aria-pressed": String(active), "data-value": value,
+            onclick: () => {
+              if (state[stateKey].has(value)) { state[stateKey].delete(value); chip.setAttribute("aria-pressed", "false"); }
+              else { state[stateKey].add(value); chip.setAttribute("aria-pressed", "true"); }
+              render();
+            },
+          }, label);
+          box.appendChild(chip);
+        });
+      }
+
+      buildChips("f-audience", Object.entries(AUDIENCE_LABELS), "audience");
+      buildChips("f-area", Object.entries(AREA_LABELS), "area");
+      buildChips("f-level", injuryData.levels.map((l) => [l.id, l.label]), "level");
+      buildChips("f-stage", journey.map((s) => [s.id, s.label]), "stage");
+
+      const q = document.getElementById("q");
+      q.addEventListener("input", () => { state.q = q.value.trim().toLowerCase(); render(); });
+
+      document.getElementById("reset").addEventListener("click", () => {
+        state.q = ""; q.value = "";
+        ["audience", "area", "level", "stage"].forEach((k) => state[k].clear());
+        document.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", "false"));
+        render();
+      });
+
+      // 태그 매칭: 콘텐츠 태그에 'all'이 있으면 항상 통과
+      function tagMatch(contentTags, selected) {
+        if (selected.size === 0) return true;
+        if (contentTags.includes("all")) return true;
+        for (const v of selected) if (contentTags.includes(v)) return true;
+        return false;
+      }
+
+      function matches(c) {
+        if (!tagMatch(c.audience, state.audience)) return false;
+        if (!tagMatch(c.area, state.area)) return false;
+        if (!tagMatch(c.injury_level, state.level)) return false;
+        if (!tagMatch(c.stage, state.stage)) return false;
+        if (state.q) {
+          const hay = [c.title, c.description, ...c.area.map((a)=>AREA_LABELS[a]||a), ...c.injury_level]
+            .join(" ").toLowerCase();
+          if (!hay.includes(state.q)) return false;
+        }
+        return true;
+      }
+
+      function card(c) {
+        const badges = [
+          el("span", { class: "badge type" }, TYPE_LABELS[c.type] || c.type),
+          ...c.audience.map((a) => el("span", { class: "badge" }, AUDIENCE_LABELS[a] || a)),
+          ...c.area.slice(0, 3).map((a) => el("span", { class: "badge area" }, AREA_LABELS[a] || a)),
+        ];
+        if (c.review_status !== "approved") {
+          badges.push(el("span", { class: "badge status-in_review" }, STATUS_LABELS[c.review_status] || c.review_status));
+        }
+        return el("article", { class: "card" }, [
+          el("h3", {}, c.title),
+          el("p", {}, c.description),
+          el("div", { class: "badges" }, badges),
+          el("p", { style: "margin-top:10px;font-size:.85rem;color:var(--color-muted);" },
+            `대상 손상수준: ${c.injury_level.includes("all") ? "전체" : c.injury_level.join(", ")} · 최종 검토 ${c.updated_at}`),
+        ]);
+      }
+
+      const results = document.getElementById("results");
+      const count = document.getElementById("count");
+
+      function render() {
+        const list = content.filter(matches);
+        results.innerHTML = "";
+        count.textContent = `${list.length}건의 자료가 있습니다.`;
+        if (!list.length) {
+          results.appendChild(el("div", { class: "notice info" }, "조건에 맞는 자료가 없습니다. 필터를 줄이거나 초기화해 보세요."));
+          return;
+        }
+        list.forEach((c) => results.appendChild(card(c)));
+      }
+
+      // focus 상세 카드 (홈/여정/손상수준에서 특정 콘텐츠로 진입 시)
+      if (focusId) {
+        const c = content.find((x) => x.content_id === focusId);
+        if (c) {
+          const fd = document.getElementById("focus-detail");
+          const related = (c.related || []).map((id) => content.find((x) => x.content_id === id)).filter(Boolean);
+          fd.appendChild(el("div", { class: "stage-detail" }, [
+            el("h2", { style: "margin-top:0;" }, c.title),
+            el("p", {}, c.description),
+            el("div", { class: "badges" }, [
+              el("span", { class: "badge type" }, TYPE_LABELS[c.type] || c.type),
+              ...c.area.map((a) => el("span", { class: "badge area" }, AREA_LABELS[a] || a)),
+            ]),
+            (c.review_status !== "approved"
+              ? el("div", { class: "notice warn", style: "margin-top:12px;" }, "이 자료는 임상 검토가 진행 중입니다. 참고용으로만 확인하세요.")
+              : el("div", { class: "notice info", style: "margin-top:12px;" }, "이 정보는 교육 목적이며 담당 의료진의 판단을 대체하지 않습니다.")),
+            related.length
+              ? el("div", {}, [
+                  el("h3", {}, "관련 자료"),
+                  el("div", { class: "grid grid-2" }, related.map((r) =>
+                    el("a", { class: "tile", href: `library.html?focus=${r.content_id}` }, [
+                      el("strong", {}, r.title), el("span", { class: "desc" }, r.description),
+                    ]))),
+                ])
+              : null,
+          ]));
+        }
+      }
+
+      render();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>치료 안내 | 척수손상 재활 플랫폼</title>
+  <meta name="description" content="척수손상 재활에서 제공되는 물리치료·작업치료·로봇 보행재활·전기자극치료·배뇨배변 관리 등 치료 정보를 안내합니다." />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <main id="main">
+    <div class="page-head">
+      <div class="container">
+        <p class="breadcrumb"><a href="index.html">홈</a> › 치료 안내</p>
+        <h1>치료 안내</h1>
+        <p class="section-sub">척수손상 환자에게 제공되는 재활치료를 안내합니다. 실제 치료는 담당 의료진의 평가에 따라 개인별로 결정됩니다.</p>
+      </div>
+    </div>
+
+    <section style="padding-top:8px;">
+      <div class="container">
+        <!-- 분류 탭 -->
+        <div class="chip-group" id="cat-tabs" role="tablist" aria-label="치료 분류" style="margin-bottom:20px;"></div>
+
+        <!-- 치료 카드 목록 -->
+        <div id="treatment-groups"></div>
+
+        <!-- 상세 -->
+        <div id="treatment-detail" aria-live="polite"></div>
+
+        <div class="notice info" style="margin-top:24px;">
+          <strong>안내</strong>
+          어떤 치료가 나에게 맞는지는 담당 의료진의 평가로 결정됩니다. 궁금한 점은 담당 치료사·의료진에게 문의하세요.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/app.js"></script>
+  <script>
+    (async function () {
+      SCIChrome.init("treatments.html");
+      const { AREA_LABELS } = SCILabels;
+
+      const data = await SCIStore.getTreatments();
+      const cats = data.categories;
+      const treatments = data.treatments;
+
+      const tabs = document.getElementById("cat-tabs");
+      const groups = document.getElementById("treatment-groups");
+      const detail = document.getElementById("treatment-detail");
+
+      let activeCat = "all";
+
+      function renderDetail(t) {
+        detail.innerHTML = "";
+        detail.appendChild(el("div", { class: "stage-detail" }, [
+          el("h2", { style: "margin-top:0;" }, `${t.icon} ${t.name}`),
+          el("p", {}, t.summary),
+          el("dl", {}, [
+            el("dt", {}, "치료 목적"), el("dd", {}, t.purpose),
+            el("dt", {}, "주요 대상"), el("dd", {}, t.target),
+            el("dt", {}, "기대 효과"), el("dd", {}, t.effect),
+          ]),
+          el("h3", { style: "margin-bottom:6px;" }, "치료 방법"),
+          el("ul", { style: "margin-top:0;" }, t.methods.map((m) => el("li", {}, m))),
+          el("p", { style: "margin-top:16px;" },
+            el("a", { class: "btn btn-solid", href: `library.html?area=${t.related_area}` },
+              `${AREA_LABELS[t.related_area] || "관련"} 교육자료 보기`)),
+        ]));
+        detail.scrollIntoView({ block: "nearest" });
+      }
+
+      function renderGroups() {
+        groups.innerHTML = "";
+        detail.innerHTML = "";
+        const shownCats = activeCat === "all" ? cats : cats.filter((c) => c.id === activeCat);
+        shownCats.forEach((cat) => {
+          const items = treatments.filter((t) => t.category === cat.id);
+          if (!items.length) return;
+          const grid = el("div", { class: "grid grid-3" }, items.map((t) =>
+            el("button", {
+              class: "tile", type: "button",
+              onclick: () => renderDetail(t),
+            }, [
+              el("span", { class: "emoji", "aria-hidden": "true" }, t.icon),
+              el("strong", {}, t.name),
+              el("span", { class: "desc" }, t.summary),
+            ])
+          ));
+          groups.appendChild(el("section", { style: "padding:8px 0 24px;" }, [
+            el("h2", { class: "section-title", style: "font-size:1.25rem;" }, cat.label),
+            grid,
+          ]));
+        });
+      }
+
+      // 분류 탭 구성
+      const allTab = el("button", {
+        class: "chip", type: "button", role: "tab", "aria-selected": "true",
+        onclick: () => { activeCat = "all"; syncTabs(allTab); renderGroups(); },
+      }, "전체");
+      tabs.appendChild(allTab);
+      const catTabs = cats.map((c) => {
+        const tab = el("button", {
+          class: "chip", type: "button", role: "tab", "aria-selected": "false",
+          onclick: () => { activeCat = c.id; syncTabs(tab); renderGroups(); },
+        }, c.label);
+        tabs.appendChild(tab);
+        return tab;
+      });
+      function syncTabs(active) {
+        [allTab, ...catTabs].forEach((t) => {
+          const on = t === active;
+          t.setAttribute("aria-selected", String(on));
+          t.setAttribute("aria-pressed", String(on));
+        });
+      }
+      syncTabs(allTab);
+
+      renderGroups();
+    })();
+  </script>
+</body>
+</html>
