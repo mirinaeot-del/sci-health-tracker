@@ -61,8 +61,13 @@
           <input type="password" id="suPw" autocomplete="new-password" placeholder="6자 이상" />
         </div>
         <div class="auth-field">
-          <label for="suNick">닉네임 <span class="req">*</span></label>
-          <input type="text" id="suNick" placeholder="표시될 이름" />
+          <label for="suName">이름 <span class="req">*</span></label>
+          <input type="text" id="suName" autocomplete="name" placeholder="본명" />
+        </div>
+        <div class="auth-field">
+          <label for="suNick">닉네임 <span class="opt">(선택)</span></label>
+          <input type="text" id="suNick" placeholder="다른 참여자에게 표시될 이름" />
+          <p class="field-help">비교에 참여할 때 다른 참여자에게는 <b>닉네임</b>으로 표시됩니다. 닉네임을 비워두면 <b>이름(본명)</b>이 표시되니, 공개가 꺼려지면 닉네임을 입력하세요.</p>
         </div>
         <div class="auth-field">
           <label for="suLevel">손상 레벨 <span class="opt">(선택)</span></label>
@@ -88,7 +93,7 @@
         </div>
         <label class="auth-consent">
           <input type="checkbox" id="suShare" />
-          <span>다른 사람과의 비교 데이터를 보시겠습니까? 동의하면 <b>내 데이터(닉네임·손상레벨·손상정도·기록)도 다른 참여자에게 보여집니다.</b></span>
+          <span>다른 사람과의 비교 데이터를 보시겠습니까? 동의하면 <b>내 데이터(닉네임·손상레벨·손상정도·기록)도 다른 참여자에게 보여집니다.</b> 닉네임이 설정되어 있지 않으면 <b>본명</b>으로 표시됩니다.</span>
         </label>
         <p class="auth-error" id="signupError"></p>
         <button type="submit" class="btn-primary btn-lg auth-submit">회원가입</button>
@@ -498,25 +503,19 @@
         <h2 class="card-title"><span aria-hidden="true">👤</span> 참여자 정보</h2>
         <div class="profile-grid">
           <div class="profile-field">
-            <label for="pName">이름 / 별칭</label>
+            <label for="pName">이름 (본명)</label>
             <input type="text" id="pName" placeholder="예: 홍길동" />
           </div>
           <div class="profile-field">
-            <label for="pId">참여자 번호</label>
-            <input type="text" id="pId" placeholder="예: SCI-001" />
+            <label for="pNick">닉네임</label>
+            <input type="text" id="pNick" placeholder="다른 참여자에게 표시될 이름" />
+          </div>
+          <div class="profile-field" style="grid-column:1/-1;">
+            <p class="field-help">🔒 <b>이름(본명)</b>은 본인과 관리자만 볼 수 있어요. 비교에 참여하면 다른 참여자에게는 <b>닉네임</b>이 표시되고, 닉네임을 비워두면 <b>이름(본명)</b>이 표시됩니다.</p>
           </div>
           <div class="profile-field">
-            <label for="pAge">나이</label>
-            <input type="number" id="pAge" inputmode="numeric" placeholder="45" />
-          </div>
-          <div class="profile-field">
-            <label for="pSex">성별</label>
-            <select id="pSex">
-              <option value="">선택</option>
-              <option value="남성">남성</option>
-              <option value="여성">여성</option>
-              <option value="기타">기타</option>
-            </select>
+            <label for="pId">아이디</label>
+            <input type="text" id="pId" placeholder="아이디" />
           </div>
           <div class="profile-field">
             <label for="pLevel">손상 부위</label>
@@ -549,7 +548,7 @@
         <h2 class="card-title"><span aria-hidden="true">👥</span> 비교 데이터 공유</h2>
         <label class="auth-consent" style="margin-top:4px;">
           <input type="checkbox" id="profShare" />
-          <span>다른 사람과의 비교 데이터를 보시겠습니까? 동의하면 <b>내 데이터(닉네임·손상레벨·손상정도·기록)도 다른 참여자에게 보여집니다.</b></span>
+          <span>다른 사람과의 비교 데이터를 보시겠습니까? 동의하면 <b>내 데이터(닉네임·손상레벨·손상정도·기록)도 다른 참여자에게 보여집니다.</b> 닉네임이 설정되어 있지 않으면 <b>본명</b>으로 표시됩니다.</span>
         </label>
         <button type="button" class="btn-save" id="saveShareBtn" style="margin-top:14px;">💾 공유 설정 저장</button>
         <p class="save-hint" id="shareHint"></p>
@@ -623,7 +622,7 @@
         <h2 class="card-title"><span aria-hidden="true">👥</span> 참여자 목록</h2>
         <div class="table-scroll">
           <table class="admin-table" id="adminUserTable">
-            <thead><tr><th>닉네임</th><th>아이디</th><th>손상레벨</th><th>손상정도</th><th>기록 수</th><th>최근 기록</th><th></th></tr></thead>
+            <thead><tr><th>이름</th><th>닉네임</th><th>아이디</th><th>손상레벨</th><th>손상정도</th><th>기록 수</th><th>최근 기록</th><th></th></tr></thead>
             <tbody id="adminUserBody"></tbody>
           </table>
         </div>

@@ -23,7 +23,8 @@
         password: password,
         options: {
           data: {
-            nickname: extra.nickname || username,
+            name: extra.name || "",
+            nickname: extra.nickname || "",
             injury_level: extra.injuryLevel || "",
             injury_degree: extra.injuryDegree || "",
             onset_date: extra.onsetDate || ""

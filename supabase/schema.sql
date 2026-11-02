@@ -13,7 +13,8 @@
 create table if not exists public.profiles (
   id            uuid primary key references auth.users(id) on delete cascade,
   username      text unique,                  -- 로그인 아이디(이메일로 매핑됨)
-  nickname      text not null,                -- 닉네임(필수)
+  name          text,                         -- 본명 (본인·관리자만 열람)
+  nickname      text,                         -- 닉네임 (제3자에게 표시, 비면 본명 사용)
   injury_level  text,                         -- 손상 레벨 (선택)
   injury_degree text,                         -- 손상 정도 (선택)
   onset_date    date,                         -- 발병일 (선택)
@@ -22,6 +23,9 @@ create table if not exists public.profiles (
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
+-- 기존 설치 대상 마이그레이션: name 컬럼 추가 + nickname NOT NULL 해제
+alter table public.profiles add column if not exists name text;
+alter table public.profiles alter column nickname drop not null;
 
 -- ---------------------------------------------------------
 -- 2) records : 일일 건강/운동/활동 기록
@@ -156,11 +160,12 @@ language plpgsql security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, username, nickname, injury_level, injury_degree, onset_date)
+  insert into public.profiles (id, username, name, nickname, injury_level, injury_degree, onset_date)
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data->>'nickname', split_part(new.email, '@', 1)),
+    nullif(new.raw_user_meta_data->>'name', ''),
+    nullif(new.raw_user_meta_data->>'nickname', ''),
     nullif(new.raw_user_meta_data->>'injury_level', ''),
     nullif(new.raw_user_meta_data->>'injury_degree', ''),
     (nullif(new.raw_user_meta_data->>'onset_date', ''))::date

@@ -543,6 +543,7 @@ textarea { resize: vertical; }
 .auth-error { color: var(--danger); font-size: 13px; font-weight: 600; min-height: 16px; }
 .auth-submit { width: 100%; }
 .auth-note { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 18px; line-height: 1.5; }
+.field-help { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 4px; }
 
 /* ================= 사용자 드롭다운 ================= */
 .user-menu-wrap { position: relative; }

@@ -159,10 +159,10 @@
 
   function refreshUserChip() {
     var p = Store.getProfile();
-    var name = p.name || "사용자";
+    var name = p.name || p.nick || "사용자";  // 본인 화면: 본명 우선
     $("#userName").textContent = name;
     $("#userAvatar").textContent = name.slice(0, 1);
-    $("#dashSub").textContent = (p.name ? p.name + "님의 " : "") + "건강 통계";
+    $("#dashSub").textContent = (name !== "사용자" ? name + "님의 " : "") + "건강 통계";
   }
 
   /* =========================================================
@@ -1430,6 +1430,7 @@
     $("#saveProfileBtn").addEventListener("click", function () {
       Store.saveProfile({
         name: $("#pName").value.trim(),
+        nick: $("#pNick").value.trim(),
         level: $("#pLevel").value,
         completeness: $("#pCompleteness").value,
         injuryDate: $("#pInjuryDate").value
@@ -1454,6 +1455,7 @@
   function fillProfile() {
     var p = Store.getProfile();
     if ($("#pName")) $("#pName").value = p.name || "";
+    if ($("#pNick")) $("#pNick").value = p.nick || "";
     if ($("#pId")) { $("#pId").value = p.id || ""; $("#pId").disabled = true; }
     if ($("#pLevel")) $("#pLevel").value = p.level || "";
     if ($("#pCompleteness")) $("#pCompleteness").value = p.completeness || "";
@@ -1499,7 +1501,7 @@
           var exMin = week.reduce(function (s, r) { return s + sumExMinR(r); }, 0);
           var exDays = week.filter(function (r) { return r.exercises && r.exercises.length; }).length;
           return {
-            nickname: p.nickname, level: p.injury_level || "-", degree: p.injury_degree || "-",
+            nickname: Store.displayName(p), level: p.injury_level || "-", degree: p.injury_degree || "-",
             exMin: exMin, exDays: exDays, isMe: p.id === myId
           };
         });
@@ -1533,7 +1535,7 @@
     var statsBox = $("#adminStats");
     var body = $("#adminUserBody");
     statsBox.innerHTML = "";
-    body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">불러오는 중...</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted);">불러오는 중...</td></tr>';
     $("#adminDetailCard").hidden = true;
 
     Store.fetchAllUsers().then(function (users) {
@@ -1556,12 +1558,13 @@
 
       // 표
       body.innerHTML = "";
-      if (!rows.length) { body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">참여자가 없습니다.</td></tr>'; return; }
+      if (!rows.length) { body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted);">참여자가 없습니다.</td></tr>'; return; }
       rows.sort(function (a, b) { return b.count - a.count; });
       rows.forEach(function (x) {
         var tr = document.createElement("tr");
         tr.innerHTML =
-          '<td><b>' + escapeHtml(x.u.nickname || "-") + '</b>' + (x.u.role === "admin" ? ' <span class="admin-badge">관리자</span>' : '') + '</td>' +
+          '<td><b>' + escapeHtml(x.u.name || "-") + '</b>' + (x.u.role === "admin" ? ' <span class="admin-badge">관리자</span>' : '') + '</td>' +
+          '<td>' + escapeHtml(x.u.nickname || "-") + '</td>' +
           '<td>' + escapeHtml(x.u.username || "-") + '</td>' +
           '<td>' + escapeHtml(x.u.injury_level || "-") + '</td>' +
           '<td>' + escapeHtml(x.u.injury_degree || "-") + '</td>' +
@@ -1572,21 +1575,23 @@
         body.appendChild(tr);
       });
     }).catch(function (ex) {
-      body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--danger);">불러오기 실패 (권한을 확인하세요)</td></tr>';
+      body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--danger);">불러오기 실패 (권한을 확인하세요)</td></tr>';
       console.error(ex);
     });
   }
 
   function adminDetail(u) {
     $("#adminDetailCard").hidden = false;
-    $("#adminDetailName").textContent = (u.nickname || "참여자");
+    $("#adminDetailName").textContent = (u.name || u.nickname || "참여자");
     var body = $("#adminDetailBody");
     body.innerHTML = '<p class="card-help">불러오는 중...</p>';
     Promise.all([Store.fetchUserRecords(u.id), Store.fetchUserSurveys(u.id)]).then(function (res) {
       var recs = res[0].slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
       var surveys = res[1];
       var html = "";
-      html += '<div class="admin-detail-meta">아이디: ' + escapeHtml(u.username || "-") +
+      html += '<div class="admin-detail-meta">이름: ' + escapeHtml(u.name || "-") +
+        ' · 닉네임: ' + escapeHtml(u.nickname || "-") +
+        ' · 아이디: ' + escapeHtml(u.username || "-") +
         ' · 손상: ' + escapeHtml(u.injury_level || "-") + "/" + escapeHtml(u.injury_degree || "-") +
         ' · 발병일: ' + escapeHtml(u.onset_date || "-") + '</div>';
       if (surveys.length) {
@@ -1637,11 +1642,13 @@
     $("#signupForm").addEventListener("submit", function (e) {
       e.preventDefault();
       var err = $("#signupError"); err.textContent = "";
-      var id = $("#suId").value.trim(), pw = $("#suPw").value, nick = $("#suNick").value.trim();
+      var id = $("#suId").value.trim(), pw = $("#suPw").value;
+      var name = $("#suName").value.trim(), nick = $("#suNick").value.trim();
       if (!id || id.length < 3) { err.textContent = "아이디는 3자 이상 입력하세요."; return; }
       if (!pw || pw.length < 6) { err.textContent = "비밀번호는 6자 이상 입력하세요."; return; }
-      if (!nick) { err.textContent = "닉네임을 입력하세요."; return; }
+      if (!name) { err.textContent = "이름을 입력하세요."; return; }
       Auth.signup(id, pw, {
+        name: name,
         nickname: nick,
         injuryLevel: $("#suLevel").value,
         injuryDegree: $("#suDegree").value,

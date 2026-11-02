@@ -71,33 +71,32 @@
 
     getUserId: function () { return cache.userId; },
 
-    /* ===== 프로필 ===== */
+    /* ===== 프로필 =====
+       name: 본명(본인·관리자 전용), nick: 닉네임(제3자 표시) */
     getProfile: function () {
-      // 화면 호환: name 필드로 닉네임 노출
       var p = cache.profile || {};
       return {
-        name: p.nickname || "", id: p.username || "",
+        name: p.name || "", nick: p.nickname || "", id: p.username || "",
         level: p.injury_level || "", completeness: p.injury_degree || "",
         injuryDate: p.onset_date || "",
         role: p.role || "user", shareCompare: !!p.share_compare
       };
     },
     saveProfile: function (profile) {
-      // 화면 필드 → DB 컬럼
       var patch = {};
-      if ("name" in profile) patch.nickname = profile.name;
-      if ("level" in profile) patch.injury_level = profile.level;
-      if ("completeness" in profile) patch.injury_degree = profile.completeness;
-      if ("injuryDate" in profile) patch.onset_date = profile.injuryDate || null;
-      if ("shareCompare" in profile) patch.share_compare = !!profile.shareCompare;
-      // 캐시 즉시 반영
-      if ("name" in profile) cache.profile.nickname = profile.name;
-      if ("level" in profile) cache.profile.injury_level = profile.level;
-      if ("completeness" in profile) cache.profile.injury_degree = profile.completeness;
-      if ("injuryDate" in profile) cache.profile.onset_date = profile.injuryDate;
-      if ("shareCompare" in profile) cache.profile.share_compare = !!profile.shareCompare;
+      if ("name" in profile) { patch.name = profile.name; cache.profile.name = profile.name; }
+      if ("nick" in profile) { patch.nickname = profile.nick; cache.profile.nickname = profile.nick; }
+      if ("level" in profile) { patch.injury_level = profile.level; cache.profile.injury_level = profile.level; }
+      if ("completeness" in profile) { patch.injury_degree = profile.completeness; cache.profile.injury_degree = profile.completeness; }
+      if ("injuryDate" in profile) { patch.onset_date = profile.injuryDate || null; cache.profile.onset_date = profile.injuryDate; }
+      if ("shareCompare" in profile) { patch.share_compare = !!profile.shareCompare; cache.profile.share_compare = !!profile.shareCompare; }
       patch.updated_at = new Date().toISOString();
       return global.sb.from("profiles").update(patch).eq("id", cache.userId);
+    },
+
+    /* 제3자(비교)에게 보여줄 표시 이름: 닉네임 우선, 없으면 본명 */
+    displayName: function (profileRow) {
+      return (profileRow && (profileRow.nickname || profileRow.name)) || "익명";
     },
 
     /* ===== 일일 기록 ===== */
