@@ -4,7 +4,7 @@
    파일을 수정하면 CACHE 버전을 올려 캐시를 갱신한다.
    ⚠️ Supabase API/인증 요청과 외부 CDN은 캐시하지 않는다(항상 네트워크).
    ========================================================= */
-var CACHE = "sci-health-v13";
+var CACHE = "sci-health-v14";
 var ASSETS = [
   "./",
   "./index.html",

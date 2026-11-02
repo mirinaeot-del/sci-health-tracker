@@ -326,7 +326,7 @@ input[type="range"]::-moz-range-thumb { width: 30px; height: 30px; border-radius
 .vital-field { display: flex; flex-direction: column; gap: 6px; }
 .vital-field label { font-size: 14px; font-weight: 600; color: var(--text-muted); }
 
-input[type="number"], input[type="text"], select, textarea {
+input[type="number"], input[type="text"], input[type="password"], input[type="email"], select, textarea {
   width: 100%; border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px;
   font-size: 16px; font-family: inherit; color: var(--text); background: var(--card);
 }
