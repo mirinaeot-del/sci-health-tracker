@@ -2,13 +2,16 @@
    sw.js — Service Worker (PWA 오프라인 지원)
    앱 셸(정적 파일)을 캐시하여 오프라인에서도 동작하게 한다.
    파일을 수정하면 CACHE 버전을 올려 캐시를 갱신한다.
+   ⚠️ Supabase API/인증 요청과 외부 CDN은 캐시하지 않는다(항상 네트워크).
    ========================================================= */
-var CACHE = "sci-health-v10";
+var CACHE = "sci-health-v11";
 var ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./survey-data.js",
+  "./supabase-config.js",
+  "./auth.js",
   "./storage.js",
   "./app.js",
   "./logo.svg",
@@ -34,9 +37,15 @@ self.addEventListener("activate", function (e) {
   );
 });
 
-/* 네트워크 우선, 실패 시 캐시 (최신성 + 오프라인 양립) */
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
+  var url = e.request.url;
+  // Supabase(API/Auth) 및 외부 CDN 요청은 캐시 개입 없이 네트워크로 직행
+  if (url.indexOf("supabase.co") >= 0 || url.indexOf("supabase.in") >= 0 ||
+      url.indexOf("jsdelivr.net") >= 0 || url.indexOf("cdn.") >= 0) {
+    return; // 기본 네트워크 처리
+  }
+  // 같은 출처 정적 자산만: 네트워크 우선, 실패 시 캐시
   e.respondWith(
     fetch(e.request).then(function (res) {
       var copy = res.clone();

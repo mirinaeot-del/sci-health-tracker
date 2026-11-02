@@ -1,151 +1,213 @@
 /* =========================================================
-   storage.js — 데이터 접근 계층 (Storage Layer)
+   storage.js — 데이터 접근 계층 (Supabase 기반 + 메모리 캐시)
    ---------------------------------------------------------
-   모든 데이터 읽기/쓰기는 이 계층을 통해서만 이루어진다.
-   지금은 localStorage에 저장하지만, 나중에 로그인 + 백엔드가
-   생기면 이 파일의 내부 구현만 API 호출로 교체하면 되고
-   화면(app.js) 코드는 거의 그대로 재사용할 수 있다.
-
-   확장 대비 설계 포인트:
-   - 모든 데이터는 "현재 사용자(userId)" 아래에 저장된다.
-     지금은 userId = "local" 고정. 로그인 도입 시 실제 사용자
-     ID로 바꾸면 사용자별로 데이터가 자연스럽게 분리된다.
-   - 데이터 키에 스키마 버전(v1)을 포함해 향후 마이그레이션 대비.
+   설계: 화면(app.js)은 기존처럼 동기 인터페이스로 읽는다.
+   - Store.init(): 로그인 후 서버에서 내 데이터를 캐시에 로드
+   - 읽기: 캐시에서 동기 반환
+   - 쓰기: 캐시 즉시 갱신 + 서버에 비동기 upsert/delete
+   Supabase 접근은 전역 sb (supabase-config.js) 사용.
    ========================================================= */
 (function (global) {
   "use strict";
 
-  var NS = "sci"; // namespace
-  var SCHEMA = "v1";
+  var cache = {
+    userId: null,
+    profile: {},          // {nickname, injury_level, injury_degree, onset_date, role, share_compare,...}
+    records: {},          // { 'YYYY-MM-DD': {date, mood, pain, ...} }
+    surveys: [],          // [{id, answers, ...}]
+    goals: null,          // {exMin, exDays, actMin, recordDays}
+    settings: {}          // 온보딩 등 (localStorage 보조)
+  };
 
-  /* 현재 사용자. 로그인 도입 전까지는 익명 로컬 사용자. */
-  var currentUserId = "local";
-
-  function key(kind) {
-    // 예: sci:v1:local:records
-    return [NS, SCHEMA, currentUserId, kind].join(":");
+  function settingsKey() { return "sci:v2:settings:" + (cache.userId || "anon"); }
+  function loadSettings() {
+    try { return JSON.parse(localStorage.getItem(settingsKey()) || "{}"); } catch (e) { return {}; }
   }
+  function saveSettingsLS() { localStorage.setItem(settingsKey(), JSON.stringify(cache.settings)); }
 
-  function readJSON(k, fallback) {
-    try {
-      var raw = localStorage.getItem(k);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (e) {
-      return fallback;
-    }
+  // 서버 record row(data jsonb) → 화면용 평탄 객체
+  function rowToRecord(row) {
+    var d = row.data || {};
+    return {
+      date: row.record_date,
+      mood: d.mood != null ? d.mood : null,
+      pain: d.pain || 0, spasticity: d.spasticity || 0,
+      urine: d.urine || 0, bowel: d.bowel || 0,
+      skin: d.skin || null,
+      exercises: d.exercises || [], activities: d.activities || [],
+      memo: d.memo || ""
+    };
   }
-  function writeJSON(k, val) {
-    localStorage.setItem(k, JSON.stringify(val));
+  function recordToData(r) {
+    return {
+      mood: r.mood, pain: r.pain, spasticity: r.spasticity,
+      urine: r.urine, bowel: r.bowel, skin: r.skin,
+      exercises: r.exercises || [], activities: r.activities || [], memo: r.memo || ""
+    };
   }
 
   var Store = {
-    /* ---- 사용자 세션 (로그인 확장 지점) ---- */
-    getUserId: function () { return currentUserId; },
-    setUserId: function (id) { currentUserId = id || "local"; },
+    /* ===== 초기화: 로그인 후 서버 데이터 로드 ===== */
+    init: function (userId) {
+      cache.userId = userId;
+      cache.settings = loadSettings();
+      return Promise.all([
+        global.sb.from("profiles").select("*").eq("id", userId).single(),
+        global.sb.from("records").select("*").eq("user_id", userId),
+        global.sb.from("surveys").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
+        global.sb.from("goals").select("*").eq("user_id", userId).maybeSingle()
+      ]).then(function (res) {
+        cache.profile = res[0].data || {};
+        cache.records = {};
+        (res[1].data || []).forEach(function (row) { cache.records[row.record_date] = rowToRecord(row); });
+        cache.surveys = (res[2].data || []).map(function (s) {
+          return { id: s.id, answers: s.answers, totalScore: s.total_score, totalMax: s.total_max,
+                   isBaseline: s.is_baseline, createdAt: s.created_at };
+        });
+        var g = res[3].data;
+        cache.goals = g ? { exMin: g.ex_min, exDays: g.ex_days, actMin: g.act_min, recordDays: g.record_days } : null;
+      });
+    },
 
-    /* ---- 프로필 ---- */
+    getUserId: function () { return cache.userId; },
+
+    /* ===== 프로필 ===== */
     getProfile: function () {
-      return readJSON(key("profile"), {});
+      // 화면 호환: name 필드로 닉네임 노출
+      var p = cache.profile || {};
+      return {
+        name: p.nickname || "", id: p.username || "",
+        level: p.injury_level || "", completeness: p.injury_degree || "",
+        injuryDate: p.onset_date || "",
+        role: p.role || "user", shareCompare: !!p.share_compare
+      };
     },
     saveProfile: function (profile) {
-      var p = Object.assign({}, profile, {
-        userId: currentUserId,
-        updatedAt: new Date().toISOString()
-      });
-      writeJSON(key("profile"), p);
-      return p;
+      // 화면 필드 → DB 컬럼
+      var patch = {};
+      if ("name" in profile) patch.nickname = profile.name;
+      if ("level" in profile) patch.injury_level = profile.level;
+      if ("completeness" in profile) patch.injury_degree = profile.completeness;
+      if ("injuryDate" in profile) patch.onset_date = profile.injuryDate || null;
+      if ("shareCompare" in profile) patch.share_compare = !!profile.shareCompare;
+      // 캐시 즉시 반영
+      if ("name" in profile) cache.profile.nickname = profile.name;
+      if ("level" in profile) cache.profile.injury_level = profile.level;
+      if ("completeness" in profile) cache.profile.injury_degree = profile.completeness;
+      if ("injuryDate" in profile) cache.profile.onset_date = profile.injuryDate;
+      if ("shareCompare" in profile) cache.profile.share_compare = !!profile.shareCompare;
+      patch.updated_at = new Date().toISOString();
+      return global.sb.from("profiles").update(patch).eq("id", cache.userId);
     },
 
-    /* ---- 일일 기록 (날짜별 map) ---- */
-    getRecords: function () {
-      return readJSON(key("records"), {});
-    },
-    getRecord: function (date) {
-      return this.getRecords()[date] || null;
+    /* ===== 일일 기록 ===== */
+    getRecords: function () { return cache.records; },
+    getRecord: function (date) { return cache.records[date] || null; },
+    listRecords: function () {
+      return Object.keys(cache.records)
+        .sort(function (a, b) { return a < b ? 1 : -1; })
+        .map(function (k) { return cache.records[k]; });
     },
     saveRecord: function (record) {
-      var records = this.getRecords();
-      record.userId = currentUserId;
-      record.updatedAt = new Date().toISOString();
-      records[record.date] = record;
-      writeJSON(key("records"), records);
+      cache.records[record.date] = record;            // 캐시 즉시
+      global.sb.from("records").upsert({               // 서버 비동기
+        user_id: cache.userId, record_date: record.date,
+        data: recordToData(record), updated_at: new Date().toISOString()
+      }, { onConflict: "user_id,record_date" }).then(function (res) {
+        if (res.error) console.error("[records upsert]", res.error);
+      });
       return record;
     },
     deleteRecord: function (date) {
-      var records = this.getRecords();
-      delete records[date];
-      writeJSON(key("records"), records);
-    },
-    /* 최신 날짜순 배열 */
-    listRecords: function () {
-      var records = this.getRecords();
-      return Object.keys(records)
-        .sort(function (a, b) { return a < b ? 1 : -1; })
-        .map(function (k) { return records[k]; });
+      delete cache.records[date];
+      global.sb.from("records").delete().eq("user_id", cache.userId).eq("record_date", date)
+        .then(function (res) { if (res.error) console.error("[records delete]", res.error); });
     },
 
-    /* ---- 기능평가 설문 (배열, 시간순으로 쌓임) ---- */
-    getSurveys: function () {
-      return readJSON(key("surveys"), []);
-    },
-    /* 오래된 → 최신 순으로 정렬 반환 */
+    /* ===== 설문 ===== */
+    getSurveys: function () { return cache.surveys; },
     listSurveys: function () {
-      return this.getSurveys().slice().sort(function (a, b) {
-        return a.createdAt < b.createdAt ? -1 : 1;
-      });
+      return cache.surveys.slice().sort(function (a, b) { return a.createdAt < b.createdAt ? -1 : 1; });
     },
+    hasBaseline: function () { return cache.surveys.length > 0; },
     addSurvey: function (survey) {
-      var surveys = this.getSurveys();
-      survey.id = "sv_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-      survey.userId = currentUserId;
-      survey.createdAt = survey.createdAt || new Date().toISOString();
-      // 첫 설문이면 baseline(초기 평가)로 표시
-      survey.isBaseline = surveys.length === 0;
-      surveys.push(survey);
-      writeJSON(key("surveys"), surveys);
+      survey.isBaseline = cache.surveys.length === 0;
+      survey.createdAt = new Date().toISOString();
+      // 임시 id (서버 저장 후 교체)
+      survey.id = "tmp_" + Date.now();
+      cache.surveys.push(survey);
+      global.sb.from("surveys").insert({
+        user_id: cache.userId, answers: survey.answers,
+        total_score: survey.totalScore, total_max: survey.totalMax,
+        is_baseline: survey.isBaseline, created_at: survey.createdAt
+      }).select().single().then(function (res) {
+        if (res.error) { console.error("[survey insert]", res.error); return; }
+        survey.id = res.data.id; // 실제 id 반영
+      });
       return survey;
     },
     deleteSurvey: function (id) {
-      var surveys = this.getSurveys().filter(function (s) { return s.id !== id; });
-      // baseline이 지워졌다면 가장 오래된 것을 baseline으로 승격
-      if (surveys.length && !surveys.some(function (s) { return s.isBaseline; })) {
-        var sorted = surveys.slice().sort(function (a, b) {
-          return a.createdAt < b.createdAt ? -1 : 1;
-        });
-        sorted[0].isBaseline = true;
+      cache.surveys = cache.surveys.filter(function (s) { return s.id !== id; });
+      if (!cache.surveys.some(function (s) { return s.isBaseline; }) && cache.surveys.length) {
+        cache.surveys.slice().sort(function (a, b) { return a.createdAt < b.createdAt ? -1 : 1; })[0].isBaseline = true;
       }
-      writeJSON(key("surveys"), surveys);
-    },
-    hasBaseline: function () {
-      return this.getSurveys().length > 0;
-    },
-
-    /* ---- 앱 설정 (온보딩 완료 여부 등) ---- */
-    getSettings: function () {
-      return readJSON(key("settings"), {});
-    },
-    saveSettings: function (patch) {
-      var s = Object.assign({}, this.getSettings(), patch);
-      writeJSON(key("settings"), s);
-      return s;
+      if (String(id).indexOf("tmp_") !== 0) {
+        global.sb.from("surveys").delete().eq("id", id)
+          .then(function (res) { if (res.error) console.error("[survey delete]", res.error); });
+      }
     },
 
-    /* ---- 목표 ---- */
+    /* ===== 목표 ===== */
     getGoals: function () {
-      // 기본 목표값
-      var defaults = { exMin: 150, exDays: 3, actMin: 300, recordDays: 5 };
-      return Object.assign(defaults, readJSON(key("goals"), {}));
+      return cache.goals || { exMin: 150, exDays: 3, actMin: 300, recordDays: 5 };
     },
     saveGoals: function (goals) {
-      writeJSON(key("goals"), goals);
+      cache.goals = goals;
+      global.sb.from("goals").upsert({
+        user_id: cache.userId, ex_min: goals.exMin, ex_days: goals.exDays,
+        act_min: goals.actMin, record_days: goals.recordDays, updated_at: new Date().toISOString()
+      }, { onConflict: "user_id" }).then(function (res) {
+        if (res.error) console.error("[goals upsert]", res.error);
+      });
       return goals;
     },
 
-    /* ---- 전체 삭제 (현재 사용자 데이터만) ---- */
-    clearAll: function () {
-      ["profile", "records", "surveys", "settings", "goals"].forEach(function (kind) {
-        localStorage.removeItem(key(kind));
-      });
+    /* ===== 앱 설정 (온보딩 등, 로컬 보조) ===== */
+    getSettings: function () { return cache.settings; },
+    saveSettings: function (patch) {
+      cache.settings = Object.assign({}, cache.settings, patch);
+      saveSettingsLS();
+      return cache.settings;
+    },
+
+    /* ===== 관리자/비교: 여러 사용자 조회 ===== */
+    // 관리자: 전체 프로필 + 기록 요약
+    fetchAllUsers: function () {
+      return global.sb.from("profiles").select("*").then(function (r) { return r.data || []; });
+    },
+    // 특정 사용자의 기록 (관리자/비교 공유 범위에서 RLS가 허용)
+    fetchUserRecords: function (userId) {
+      return global.sb.from("records").select("*").eq("user_id", userId)
+        .then(function (r) { return (r.data || []).map(rowToRecord); });
+    },
+    fetchUserSurveys: function (userId) {
+      return global.sb.from("surveys").select("*").eq("user_id", userId).order("created_at", { ascending: true })
+        .then(function (r) {
+          return (r.data || []).map(function (s) {
+            return { id: s.id, answers: s.answers, totalScore: s.total_score, totalMax: s.total_max,
+                     isBaseline: s.is_baseline, createdAt: s.created_at };
+          });
+        });
+    },
+    // 비교 공유 동의한 사용자들 (본인 포함)
+    fetchComparePeers: function () {
+      return global.sb.from("profiles").select("*").eq("share_compare", true)
+        .then(function (r) { return r.data || []; });
+    },
+
+    /* 로그아웃 시 캐시 비우기 */
+    clearCache: function () {
+      cache = { userId: null, profile: {}, records: {}, surveys: [], goals: null, settings: {} };
     }
   };
 

@@ -110,6 +110,8 @@
     if (name === "survey") renderSurveyView();
     if (name === "analysis") renderAnalysis();
     if (name === "record") loadDraftForDate();
+    if (name === "compare") renderCompare();
+    if (name === "admin") renderAdmin();
   }
 
   function initNav() {
@@ -121,7 +123,6 @@
       var b = e.target.closest("[data-goto]");
       if (b) showView(b.getAttribute("data-goto"));
     });
-    $("#userChip").addEventListener("click", function () { showView("profile"); });
   }
 
   /* =========================================================
@@ -135,11 +136,6 @@
   }
   function initOnboarding() {
     $("#onboardStartBtn").addEventListener("click", function () {
-      var name = $("#onboardName").value.trim();
-      if (name) {
-        Store.saveProfile(Object.assign(Store.getProfile(), { name: name }));
-        refreshUserChip();
-      }
       Store.saveSettings({ onboarded: true });
       $("#onboarding").hidden = true;
       showView("survey");
@@ -1421,27 +1417,276 @@
      프로필
      ========================================================= */
   function initProfile() {
-    var p = Store.getProfile();
-    $("#pName").value = p.name || ""; $("#pId").value = p.id || "";
-    $("#pAge").value = p.age || ""; $("#pSex").value = p.sex || "";
-    $("#pLevel").value = p.level || ""; $("#pCompleteness").value = p.completeness || "";
-    $("#pInjuryDate").value = p.injuryDate || "";
-
     $("#saveProfileBtn").addEventListener("click", function () {
       Store.saveProfile({
-        name: $("#pName").value.trim(), id: $("#pId").value.trim(),
-        age: $("#pAge").value ? Number($("#pAge").value) : "",
-        sex: $("#pSex").value, level: $("#pLevel").value,
-        completeness: $("#pCompleteness").value, injuryDate: $("#pInjuryDate").value
+        name: $("#pName").value.trim(),
+        level: $("#pLevel").value,
+        completeness: $("#pCompleteness").value,
+        injuryDate: $("#pInjuryDate").value
       });
       $("#profileHint").textContent = "✓ 내 정보가 저장되었어요.";
       refreshUserChip();
       toast("정보 저장 완료!");
     });
+    $("#saveShareBtn").addEventListener("click", function () {
+      Store.saveProfile({ shareCompare: $("#profShare").checked });
+      $("#shareHint").textContent = $("#profShare").checked
+        ? "✓ 비교에 참여합니다. 내 데이터가 다른 참여자에게 보여집니다."
+        : "✓ 비교 참여를 해제했습니다.";
+      toast("공유 설정 저장 완료!");
+    });
     $("#clearAllBtn").addEventListener("click", function () {
-      if (!confirm("정말 모든 기록과 정보를 삭제할까요?\n이 작업은 되돌릴 수 없습니다.")) return;
-      Store.clearAll();
-      location.reload();
+      alert("데이터는 서버에 저장됩니다. 계정/데이터 삭제가 필요하면 관리자에게 문의해 주세요.");
+    });
+  }
+
+  /* 프로필 값 채우기 (로그인 후 호출) */
+  function fillProfile() {
+    var p = Store.getProfile();
+    if ($("#pName")) $("#pName").value = p.name || "";
+    if ($("#pId")) { $("#pId").value = p.id || ""; $("#pId").disabled = true; }
+    if ($("#pLevel")) $("#pLevel").value = p.level || "";
+    if ($("#pCompleteness")) $("#pCompleteness").value = p.completeness || "";
+    if ($("#pInjuryDate")) $("#pInjuryDate").value = p.injuryDate || "";
+    if ($("#profShare")) $("#profShare").checked = !!p.shareCompare;
+  }
+
+  /* =========================================================
+     참여자 비교 (동의자끼리)
+     ========================================================= */
+  function initCompare() {
+    $("#enableCompareBtn").addEventListener("click", function () {
+      Store.saveProfile({ shareCompare: true });
+      toast("비교에 참여합니다!");
+      renderCompare();
+    });
+  }
+
+  function sumExMinR(r) { return (r.exercises || []).reduce(function (s, e) { return s + (e.minutes || 0); }, 0); }
+
+  function renderCompare() {
+    var me = Store.getProfile();
+    // 미동의 시 안내 카드
+    if (!me.shareCompare) {
+      $("#compareConsentCard").hidden = false;
+      $("#compareContent").hidden = true;
+      return;
+    }
+    $("#compareConsentCard").hidden = true;
+    $("#compareContent").hidden = false;
+
+    var box = $("#compareRanking");
+    box.innerHTML = '<p class="card-help">불러오는 중...</p>';
+
+    // 동의자 프로필 + 각자 기록 로드 → 최근 7일 운동량 랭킹
+    Store.fetchComparePeers().then(function (peers) {
+      var since = new Date(); since.setDate(since.getDate() - 6);
+      var sinceStr = new Date(since.getTime() - since.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      var myId = Store.getUserId();
+      return Promise.all(peers.map(function (p) {
+        return Store.fetchUserRecords(p.id).then(function (recs) {
+          var week = recs.filter(function (r) { return r.date >= sinceStr; });
+          var exMin = week.reduce(function (s, r) { return s + sumExMinR(r); }, 0);
+          var exDays = week.filter(function (r) { return r.exercises && r.exercises.length; }).length;
+          return {
+            nickname: p.nickname, level: p.injury_level || "-", degree: p.injury_degree || "-",
+            exMin: exMin, exDays: exDays, isMe: p.id === myId
+          };
+        });
+      }));
+    }).then(function (rows) {
+      rows.sort(function (a, b) { return b.exMin - a.exMin; });
+      if (!rows.length) { box.innerHTML = '<p class="card-help">아직 비교에 참여한 사람이 없어요.</p>'; return; }
+      var max = Math.max.apply(null, rows.map(function (r) { return r.exMin; }).concat([1]));
+      box.innerHTML = "";
+      rows.forEach(function (r, i) {
+        var pct = Math.round(r.exMin / max * 100);
+        box.appendChild(el("div", "compare-row" + (r.isMe ? " me" : ""),
+          '<div class="cr-rank">' + (i + 1) + '</div>' +
+          '<div class="cr-body"><div class="cr-name">' + escapeHtml(r.nickname) + (r.isMe ? ' <span class="cr-metag">나</span>' : '') +
+            ' <span class="cr-meta">' + escapeHtml(r.level) + ' · ' + escapeHtml(r.degree) + '</span></div>' +
+            '<div class="bar"><div class="bar-fill target" style="width:' + pct + '%"></div></div></div>' +
+          '<div class="cr-val">' + r.exMin + '분<br><span>' + r.exDays + '일</span></div>'));
+      });
+    }).catch(function (ex) {
+      box.innerHTML = '<p class="card-help">불러오기에 실패했어요.</p>';
+      console.error(ex);
+    });
+  }
+
+  /* =========================================================
+     관리자 (전체 참여자 조회)
+     ========================================================= */
+  function initAdmin() { /* 렌더는 showView에서 */ }
+
+  function renderAdmin() {
+    var statsBox = $("#adminStats");
+    var body = $("#adminUserBody");
+    statsBox.innerHTML = "";
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">불러오는 중...</td></tr>';
+    $("#adminDetailCard").hidden = true;
+
+    Store.fetchAllUsers().then(function (users) {
+      // 각 사용자 기록 수/최근 기록 집계
+      return Promise.all(users.map(function (u) {
+        return Store.fetchUserRecords(u.id).then(function (recs) {
+          var last = recs.map(function (r) { return r.date; }).sort().pop() || "-";
+          return { u: u, count: recs.length, last: last };
+        });
+      }));
+    }).then(function (rows) {
+      // 통계 카드
+      var total = rows.length;
+      var active = rows.filter(function (x) { return x.count > 0; }).length;
+      var shared = rows.filter(function (x) { return x.u.share_compare; }).length;
+      statsBox.innerHTML =
+        dashCard("👥", total, "전체 참여자", "명", "blue") +
+        dashCard("✍️", active, "기록 있는 참여자", "명", "green") +
+        dashCard("🤝", shared, "비교 참여자", "명", "teal");
+
+      // 표
+      body.innerHTML = "";
+      if (!rows.length) { body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">참여자가 없습니다.</td></tr>'; return; }
+      rows.sort(function (a, b) { return b.count - a.count; });
+      rows.forEach(function (x) {
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          '<td><b>' + escapeHtml(x.u.nickname || "-") + '</b>' + (x.u.role === "admin" ? ' <span class="admin-badge">관리자</span>' : '') + '</td>' +
+          '<td>' + escapeHtml(x.u.username || "-") + '</td>' +
+          '<td>' + escapeHtml(x.u.injury_level || "-") + '</td>' +
+          '<td>' + escapeHtml(x.u.injury_degree || "-") + '</td>' +
+          '<td>' + x.count + '</td>' +
+          '<td>' + (x.last === "-" ? "-" : fmtDate(x.last)) + '</td>' +
+          '<td><button class="btn-outline btn-sm">상세</button></td>';
+        tr.querySelector("button").addEventListener("click", function () { adminDetail(x.u); });
+        body.appendChild(tr);
+      });
+    }).catch(function (ex) {
+      body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--danger);">불러오기 실패 (권한을 확인하세요)</td></tr>';
+      console.error(ex);
+    });
+  }
+
+  function adminDetail(u) {
+    $("#adminDetailCard").hidden = false;
+    $("#adminDetailName").textContent = (u.nickname || "참여자");
+    var body = $("#adminDetailBody");
+    body.innerHTML = '<p class="card-help">불러오는 중...</p>';
+    Promise.all([Store.fetchUserRecords(u.id), Store.fetchUserSurveys(u.id)]).then(function (res) {
+      var recs = res[0].slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+      var surveys = res[1];
+      var html = "";
+      html += '<div class="admin-detail-meta">아이디: ' + escapeHtml(u.username || "-") +
+        ' · 손상: ' + escapeHtml(u.injury_level || "-") + "/" + escapeHtml(u.injury_degree || "-") +
+        ' · 발병일: ' + escapeHtml(u.onset_date || "-") + '</div>';
+      if (surveys.length) {
+        var latest = surveys[surveys.length - 1];
+        html += '<p style="margin:10px 0;"><b>기능평가</b> ' + surveys.length + '회 · 최근 점수 ' + SurveyData.totalPercent(latest.answers) + '점</p>';
+      }
+      html += '<p style="margin:10px 0;"><b>기록</b> 총 ' + recs.length + '건</p>';
+      html += '<div class="table-scroll"><table class="admin-table"><thead><tr><th>날짜</th><th>통증</th><th>경직</th><th>운동(분)</th><th>활동(분)</th><th>메모</th></tr></thead><tbody>';
+      recs.slice(0, 30).forEach(function (r) {
+        var exm = (r.exercises || []).reduce(function (s, e) { return s + (e.minutes || 0); }, 0);
+        var acm = (r.activities || []).reduce(function (s, a) { return s + (a.minutes || 0); }, 0);
+        html += '<tr><td>' + fmtDate(r.date) + '</td><td>' + (LEVEL_LABELS[r.pain || 0]) + '</td><td>' + (LEVEL_LABELS[r.spasticity || 0]) +
+          '</td><td>' + exm + '</td><td>' + acm + '</td><td>' + escapeHtml((r.memo || "").slice(0, 30)) + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+      body.innerHTML = html;
+      $("#adminDetailCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    }).catch(function (ex) { body.innerHTML = '<p class="card-help">불러오기 실패</p>'; console.error(ex); });
+  }
+
+  /* =========================================================
+     인증 화면 (로그인/가입)
+     ========================================================= */
+  function initAuthScreen() {
+    // 탭 전환
+    $all(".auth-tab").forEach(function (t) {
+      t.addEventListener("click", function () {
+        var tab = t.getAttribute("data-authtab");
+        $all(".auth-tab").forEach(function (x) { x.classList.toggle("active", x === t); });
+        $("#loginForm").hidden = tab !== "login";
+        $("#signupForm").hidden = tab !== "signup";
+      });
+    });
+    // 로그인
+    $("#loginForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var err = $("#loginError"); err.textContent = "";
+      var id = $("#loginId").value.trim(), pw = $("#loginPw").value;
+      if (!id || !pw) { err.textContent = "아이디와 비밀번호를 입력하세요."; return; }
+      Auth.login(id, pw).then(function () {
+        return bootApp();
+      }).catch(function (ex) {
+        err.textContent = "로그인 실패: 아이디 또는 비밀번호를 확인하세요.";
+        console.error(ex);
+      });
+    });
+    // 가입
+    $("#signupForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var err = $("#signupError"); err.textContent = "";
+      var id = $("#suId").value.trim(), pw = $("#suPw").value, nick = $("#suNick").value.trim();
+      if (!id || id.length < 3) { err.textContent = "아이디는 3자 이상 입력하세요."; return; }
+      if (!pw || pw.length < 6) { err.textContent = "비밀번호는 6자 이상 입력하세요."; return; }
+      if (!nick) { err.textContent = "닉네임을 입력하세요."; return; }
+      Auth.signup(id, pw, {
+        nickname: nick,
+        injuryLevel: $("#suLevel").value,
+        injuryDegree: $("#suDegree").value,
+        onsetDate: $("#suOnset").value
+      }).then(function () {
+        // 가입 후 바로 로그인
+        return Auth.login(id, pw);
+      }).then(function () {
+        // 비교 동의 체크 시 프로필에 반영 (init 후)
+        var share = $("#suShare").checked;
+        return bootApp().then(function () {
+          if (share) return Store.saveProfile({ shareCompare: true });
+        });
+      }).catch(function (ex) {
+        var msg = (ex && ex.message) || "";
+        if (/already registered|already exists/i.test(msg)) err.textContent = "이미 사용 중인 아이디입니다.";
+        else err.textContent = "가입 실패: " + (msg || "잠시 후 다시 시도하세요.");
+        console.error(ex);
+      });
+    });
+  }
+
+  function showAuth() {
+    $("#authScreen").hidden = false;
+    $("#appRoot").hidden = true;
+  }
+
+  /* 로그인 성공 후: 서버 데이터 로드 → 앱 표시 */
+  function bootApp() {
+    return Auth.getUser().then(function (user) {
+      if (!user) { showAuth(); return; }
+      return Store.init(user.id).then(function () {
+        $("#authScreen").hidden = true;
+        $("#appRoot").hidden = false;
+        // 관리자 메뉴 표시 여부
+        var isAdmin = Store.getProfile().role === "admin";
+        $all(".admin-only").forEach(function (b) { b.hidden = !isAdmin; });
+        refreshUserChip();
+        fillProfile();
+        showView("dashboard");
+        maybeOnboard();
+      });
+    });
+  }
+
+  /* 사용자 메뉴 드롭다운 + 로그아웃 */
+  function initUserMenu() {
+    $("#userChip").addEventListener("click", function (e) {
+      e.stopPropagation();
+      var dd = $("#userDropdown"); dd.hidden = !dd.hidden;
+    });
+    document.addEventListener("click", function () { $("#userDropdown").hidden = true; });
+    $("#menuProfile").addEventListener("click", function () { showView("profile"); });
+    $("#menuLogout").addEventListener("click", function () {
+      Auth.logout().then(function () { Store.clearCache(); location.reload(); });
     });
   }
 
@@ -1449,7 +1694,10 @@
      init
      ========================================================= */
   function init() {
+    // 이벤트 바인딩 (화면 요소는 로그인 전에도 DOM에 존재)
+    initAuthScreen();
     initNav();
+    initUserMenu();
     initOnboarding();
     initSurvey();
     initAnalysis();
@@ -1457,11 +1705,15 @@
     initRecord();
     initProfile();
     initGoals();
+    initCompare();
+    initAdmin();
     $("#exportBtn").addEventListener("click", exportCSV);
 
-    refreshUserChip();
-    showView("dashboard");
-    maybeOnboard();
+    // 세션 확인 → 로그인돼 있으면 앱, 아니면 로그인 화면
+    Auth.getSession().then(function (session) {
+      if (session) return bootApp();
+      showAuth();
+    }).catch(function () { showAuth(); });
   }
 
   if (document.readyState === "loading") {

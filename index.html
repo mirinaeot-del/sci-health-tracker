@@ -13,8 +13,93 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="건강 지킴이" />
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
 <body>
+  <!-- ===================== 로그인 / 가입 ===================== -->
+  <div class="auth-screen" id="authScreen" hidden>
+    <div class="auth-card">
+      <div class="auth-brand">
+        <svg viewBox="0 0 48 48" width="52" height="52" aria-hidden="true">
+          <defs><linearGradient id="authG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs>
+          <rect x="3" y="3" width="42" height="42" rx="12" fill="url(#authG)"/>
+          <path d="M24 36c-0.6 0-1.2-0.22-1.66-0.64C17.9 31.3 11.5 26.6 11.5 20.6c0-3.5 2.7-6.3 6.1-6.3 2.2 0 4.1 1.1 5.3 2.85l1.1 1.6 1.1-1.6c1.2-1.75 3.1-2.85 5.3-2.85 3.4 0 6.1 2.8 6.1 6.3 0 6-6.4 10.7-10.84 14.76-0.46 0.42-1.06 0.64-1.66 0.64z" fill="#fff"/>
+          <path d="M17.5 23h3.4l1.5-2.7 2.3 5 1.6-2.9h4.2" fill="none" stroke="#3b82f6" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h1>건강 지킴이</h1>
+        <p>척수손상 건강기록 · 재활 추적</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-authtab="login">로그인</button>
+        <button class="auth-tab" data-authtab="signup">회원가입</button>
+      </div>
+
+      <!-- 로그인 폼 -->
+      <form class="auth-form active" id="loginForm">
+        <div class="auth-field">
+          <label for="loginId">아이디</label>
+          <input type="text" id="loginId" autocomplete="username" placeholder="아이디" />
+        </div>
+        <div class="auth-field">
+          <label for="loginPw">비밀번호</label>
+          <input type="password" id="loginPw" autocomplete="current-password" placeholder="비밀번호" />
+        </div>
+        <p class="auth-error" id="loginError"></p>
+        <button type="submit" class="btn-primary btn-lg auth-submit">로그인</button>
+      </form>
+
+      <!-- 가입 폼 -->
+      <form class="auth-form" id="signupForm" hidden>
+        <div class="auth-field">
+          <label for="suId">아이디 <span class="req">*</span></label>
+          <input type="text" id="suId" autocomplete="username" placeholder="영문/숫자 3자 이상" />
+        </div>
+        <div class="auth-field">
+          <label for="suPw">비밀번호 <span class="req">*</span></label>
+          <input type="password" id="suPw" autocomplete="new-password" placeholder="6자 이상" />
+        </div>
+        <div class="auth-field">
+          <label for="suNick">닉네임 <span class="req">*</span></label>
+          <input type="text" id="suNick" placeholder="표시될 이름" />
+        </div>
+        <div class="auth-field">
+          <label for="suLevel">손상 레벨 <span class="opt">(선택)</span></label>
+          <select id="suLevel">
+            <option value="">선택 안 함</option>
+            <option value="경수 (Cervical)">경수 (Cervical, 목)</option>
+            <option value="흉수 (Thoracic)">흉수 (Thoracic, 등)</option>
+            <option value="요수 (Lumbar)">요수 (Lumbar, 허리)</option>
+            <option value="천수 (Sacral)">천수 (Sacral, 엉치)</option>
+          </select>
+        </div>
+        <div class="auth-field">
+          <label for="suDegree">손상 정도 <span class="opt">(선택)</span></label>
+          <select id="suDegree">
+            <option value="">선택 안 함</option>
+            <option value="완전손상">완전손상</option>
+            <option value="불완전손상">불완전손상</option>
+          </select>
+        </div>
+        <div class="auth-field">
+          <label for="suOnset">발병일 <span class="opt">(선택)</span></label>
+          <input type="date" id="suOnset" />
+        </div>
+        <label class="auth-consent">
+          <input type="checkbox" id="suShare" />
+          <span>다른 사람과의 비교 데이터를 보시겠습니까? 동의하면 <b>내 데이터(닉네임·손상레벨·손상정도·기록)도 다른 참여자에게 보여집니다.</b></span>
+        </label>
+        <p class="auth-error" id="signupError"></p>
+        <button type="submit" class="btn-primary btn-lg auth-submit">회원가입</button>
+      </form>
+
+      <p class="auth-note">🔒 데이터는 안전하게 서버에 저장되며, 본인·관리자·(동의 시)비교 참여자만 접근할 수 있습니다.</p>
+    </div>
+  </div>
+
+  <!-- ===================== 앱 본체 (로그인 후) ===================== -->
+  <div id="appRoot" hidden>
   <!-- ===================== 상단 네비게이션 ===================== -->
   <header class="topnav">
     <div class="topnav-inner">
@@ -39,10 +124,19 @@
         <button class="nav-item" data-view="history"><span aria-hidden="true">📖</span> 기록 목록</button>
         <button class="nav-item" data-view="survey"><span aria-hidden="true">📋</span> 기능평가</button>
         <button class="nav-item" data-view="analysis"><span aria-hidden="true">📈</span> 비교 분석</button>
+        <button class="nav-item" data-view="compare"><span aria-hidden="true">👥</span> 참여자 비교</button>
+        <button class="nav-item admin-only" data-view="admin" hidden><span aria-hidden="true">⚙️</span> 관리자</button>
       </nav>
-      <div class="user-chip" id="userChip" title="내 정보">
-        <span class="user-avatar" id="userAvatar">김</span>
-        <span class="user-name" id="userName">사용자</span>
+      <div class="user-menu-wrap">
+        <div class="user-chip" id="userChip" title="계정 메뉴">
+          <span class="user-avatar" id="userAvatar">김</span>
+          <span class="user-name" id="userName">사용자</span>
+          <span class="user-caret" aria-hidden="true">▾</span>
+        </div>
+        <div class="user-dropdown" id="userDropdown" hidden>
+          <button class="user-dropdown-item" id="menuProfile"><span aria-hidden="true">👤</span> 내 정보</button>
+          <button class="user-dropdown-item" id="menuLogout"><span aria-hidden="true">🚪</span> 로그아웃</button>
+        </div>
       </div>
     </div>
   </header>
@@ -452,6 +546,16 @@
       </div>
 
       <div class="card">
+        <h2 class="card-title"><span aria-hidden="true">👥</span> 비교 데이터 공유</h2>
+        <label class="auth-consent" style="margin-top:4px;">
+          <input type="checkbox" id="profShare" />
+          <span>다른 사람과의 비교 데이터를 보시겠습니까? 동의하면 <b>내 데이터(닉네임·손상레벨·손상정도·기록)도 다른 참여자에게 보여집니다.</b></span>
+        </label>
+        <button type="button" class="btn-save" id="saveShareBtn" style="margin-top:14px;">💾 공유 설정 저장</button>
+        <p class="save-hint" id="shareHint"></p>
+      </div>
+
+      <div class="card">
         <h2 class="card-title"><span aria-hidden="true">🎯</span> 나의 목표</h2>
         <p class="card-help">주간 목표를 정하면 월별 분석에서 달성률을 확인할 수 있어요.</p>
         <div class="profile-grid">
@@ -482,23 +586,66 @@
         <button type="button" class="btn-danger" id="clearAllBtn">전체 데이터 삭제</button>
       </div>
 
-      <p class="privacy-note">🔒 입력한 모든 정보는 서버로 전송되지 않고 이 기기(브라우저)에만 저장됩니다.</p>
+      <p class="privacy-note">🔒 데이터는 서버에 안전하게 저장되며, 본인·관리자·(동의 시)비교 참여자만 접근할 수 있습니다.</p>
+    </section>
+
+    <!-- ===================== 참여자 비교 ===================== -->
+    <section class="view" id="view-compare">
+      <div class="view-head">
+        <h1 class="view-title"><span aria-hidden="true">👥</span> 참여자 비교</h1>
+        <p class="view-sub">비교에 동의한 참여자들의 기록을 함께 볼 수 있어요.</p>
+      </div>
+
+      <div class="card" id="compareConsentCard" hidden>
+        <h2 class="card-title"><span aria-hidden="true">🙋</span> 비교에 참여하시겠어요?</h2>
+        <p class="card-help">동의하면 다른 참여자의 비교 데이터를 볼 수 있고, 내 데이터(닉네임·손상레벨·손상정도·기록)도 다른 참여자에게 보여집니다.</p>
+        <button class="btn-primary" id="enableCompareBtn">✅ 비교에 참여하기</button>
+      </div>
+
+      <div id="compareContent" hidden>
+        <div class="card">
+          <h2 class="card-title"><span aria-hidden="true">🏅</span> 참여자 운동량 비교 (최근 7일)</h2>
+          <div id="compareRanking" class="compare-ranking"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 관리자 ===================== -->
+    <section class="view" id="view-admin">
+      <div class="view-head">
+        <h1 class="view-title"><span aria-hidden="true">⚙️</span> 관리자</h1>
+        <p class="view-sub">전체 참여자 현황과 데이터를 확인합니다.</p>
+      </div>
+
+      <div class="dash-grid" id="adminStats"></div>
+
+      <div class="card">
+        <h2 class="card-title"><span aria-hidden="true">👥</span> 참여자 목록</h2>
+        <div class="table-scroll">
+          <table class="admin-table" id="adminUserTable">
+            <thead><tr><th>닉네임</th><th>아이디</th><th>손상레벨</th><th>손상정도</th><th>기록 수</th><th>최근 기록</th><th></th></tr></thead>
+            <tbody id="adminUserBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="adminDetailCard" hidden>
+        <h2 class="card-title"><span aria-hidden="true">🔍</span> <span id="adminDetailName">참여자</span> 상세</h2>
+        <div id="adminDetailBody"></div>
+      </div>
     </section>
   </main>
+  </div><!-- /#appRoot -->
 
   <!-- ===================== 온보딩 모달 ===================== -->
   <div class="modal-backdrop" id="onboarding" hidden>
     <div class="modal onboarding-modal">
       <div class="onboarding-emoji">💙</div>
-      <h2>건강 지킴이에 오신 것을 환영합니다</h2>
+      <h2>환영합니다!</h2>
       <p class="onboarding-desc">
         시작하기 전에 <b>기능평가 설문</b>으로 현재 몸 상태를 기록해요.<br />
         나중에 다시 평가하면 <b>어떤 부분이 얼마나 좋아졌는지</b> 비교해 볼 수 있어요.
       </p>
-      <div class="onboarding-name">
-        <label for="onboardName">먼저, 어떻게 불러드릴까요?</label>
-        <input type="text" id="onboardName" placeholder="이름 또는 별칭" />
-      </div>
       <div class="onboarding-actions">
         <button class="btn-primary btn-lg" id="onboardStartBtn">📋 기능평가 시작하기</button>
         <button class="btn-text" id="onboardSkipBtn">나중에 하기</button>
@@ -509,6 +656,8 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="survey-data.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
   <script src="storage.js"></script>
   <script src="app.js"></script>
   <script>

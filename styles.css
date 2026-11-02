@@ -522,6 +522,53 @@ textarea { resize: vertical; }
 .dt-bar.pain { background: linear-gradient(180deg, #f87171, #ef4444); }
 .dt-x { font-size: 11px; color: var(--text-muted); margin-top: 6px; white-space: nowrap; }
 
+/* ================= 로그인 / 가입 ================= */
+.auth-screen { position: fixed; inset: 0; z-index: 100; background: linear-gradient(135deg, #1e3a8a, #2563eb); display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
+.auth-card { background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 420px; padding: 32px 28px; margin: auto; }
+.auth-brand { text-align: center; margin-bottom: 22px; }
+.auth-brand svg { margin-bottom: 8px; }
+.auth-brand h1 { font-size: 22px; font-weight: 800; }
+.auth-brand p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.auth-tabs { display: flex; gap: 6px; background: var(--bg); border-radius: 12px; padding: 4px; margin-bottom: 20px; }
+.auth-tab { flex: 1; border: none; background: none; padding: 10px; border-radius: 9px; font-size: 15px; font-weight: 700; color: var(--text-muted); cursor: pointer; }
+.auth-tab.active { background: #fff; color: var(--primary); box-shadow: var(--shadow); }
+.auth-form { display: flex; flex-direction: column; gap: 14px; }
+.auth-field { display: flex; flex-direction: column; gap: 6px; }
+.auth-field label { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+.auth-field .req { color: var(--danger); }
+.auth-field .opt { color: var(--text-muted); font-weight: 400; font-size: 12px; }
+.auth-consent { display: flex; align-items: flex-start; gap: 10px; background: var(--bg); border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.5; cursor: pointer; }
+.auth-consent input { margin-top: 2px; width: 18px; height: 18px; flex-shrink: 0; }
+.auth-error { color: var(--danger); font-size: 13px; font-weight: 600; min-height: 16px; }
+.auth-submit { width: 100%; }
+.auth-note { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 18px; line-height: 1.5; }
+
+/* ================= 사용자 드롭다운 ================= */
+.user-menu-wrap { position: relative; }
+.user-caret { font-size: 11px; opacity: 0.8; }
+.user-dropdown { position: absolute; right: 0; top: calc(100% + 8px); background: #fff; border-radius: 12px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; min-width: 160px; z-index: 60; }
+.user-dropdown-item { display: flex; align-items: center; gap: 8px; width: 100%; border: none; background: none; padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer; text-align: left; }
+.user-dropdown-item:hover { background: var(--bg); }
+
+/* ================= 관리자 / 비교 테이블 ================= */
+.table-scroll { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th { text-align: left; padding: 10px 12px; font-size: 13px; color: var(--text-muted); border-bottom: 2px solid var(--border); white-space: nowrap; }
+.admin-table td { padding: 11px 12px; font-size: 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.admin-badge { display: inline-block; font-size: 11px; font-weight: 800; background: var(--accent); color: #1f2937; padding: 1px 7px; border-radius: 10px; }
+.admin-detail-meta { font-size: 14px; color: var(--text-muted); background: var(--bg); padding: 10px 14px; border-radius: 10px; }
+
+.compare-ranking { display: flex; flex-direction: column; gap: 10px; }
+.compare-row { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+.compare-row.me { border-color: var(--primary); background: var(--primary-light); }
+.cr-rank { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0; }
+.cr-body { flex: 1; min-width: 0; }
+.cr-name { font-weight: 700; font-size: 14px; margin-bottom: 5px; }
+.cr-meta { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.cr-metag { font-size: 11px; background: var(--primary); color: #fff; padding: 1px 7px; border-radius: 10px; }
+.cr-val { text-align: right; font-weight: 800; font-size: 15px; flex-shrink: 0; }
+.cr-val span { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+
 /* ================= 반응형 (모바일) ================= */
 @media (max-width: 860px) {
   .record-layout { grid-template-columns: 1fr; }
