@@ -47,9 +47,14 @@
   }
 
   var MOOD_FACES = { 1: "😣", 2: "😕", 3: "😐", 4: "🙂", 5: "😄" };
+  var MOOD_LABELS = { 1: "매우 나쁨", 2: "나쁨", 3: "보통", 4: "좋음", 5: "매우 좋음" };
   var SKIN_LABELS = { good: "피부 이상 없음", redness: "피부 빨감", wound: "상처 있음" };
   // 통증·경직 5단계 (0=없음 ~ 4=매우심함)
   var LEVEL_LABELS = { 0: "없음", 1: "조금", 2: "보통", 3: "심함", 4: "매우심함" };
+
+  /* 컨디션/통증·경직을 "이모지 + 한글"로 표시하는 헬퍼 */
+  function moodText(m) { return m != null ? (MOOD_FACES[m] + " " + MOOD_LABELS[m]) : "–"; }
+  function moodTextShort(m) { return m != null ? MOOD_LABELS[m] : "–"; }
 
   /* 운동 카탈로그: 카테고리 → 종목 (SCI 참여자 재활 중심) */
   var EXERCISE_CATALOG = [
@@ -206,7 +211,7 @@
     cards.push(dashCard("💪", exDays, "최근 7일 운동", "일", "green"));
     cards.push(dashCard("⏱️", totalExMin, "누적 운동 시간", "분", "purple"));
     cards.push(dashCard("🗓️", totalActMin, "누적 활동 시간", "분", "teal"));
-    cards.push(dashCard("🙂", avgMood != null ? MOOD_FACES[avgMood] : "–", "최근 컨디션", "", "amber"));
+    cards.push(dashCard(avgMood != null ? MOOD_FACES[avgMood] : "🙂", avgMood != null ? MOOD_LABELS[avgMood] : "–", "최근 컨디션", "", "amber"));
 
     // 기능평가 요약
     if (surveys.length) {
@@ -565,6 +570,80 @@
         group.appendChild(row);
       });
       itemBox.appendChild(group);
+    });
+
+    // 차트 (레이더: 섹션별, 막대: 문항별 변화값)
+    renderSectionRadar(base, target);
+    renderItemBar(base, target);
+  }
+
+  var _radarChart = null, _itemChart = null;
+
+  /* 섹션별 변화 레이더(방사형) 차트: 이전 vs 최근 */
+  function renderSectionRadar(base, target) {
+    if (typeof Chart === "undefined") return;
+    var canvas = $("#sectionRadar"); if (!canvas) return;
+    var labels = SurveyData.sections.map(function (s) { return s.title; });
+    var baseData = SurveyData.sections.map(function (s) {
+      return Math.round(SurveyData.sectionScore(s, base.answers) / SurveyData.sectionMax(s) * 100);
+    });
+    var targetData = SurveyData.sections.map(function (s) {
+      return Math.round(SurveyData.sectionScore(s, target.answers) / SurveyData.sectionMax(s) * 100);
+    });
+    if (_radarChart) _radarChart.destroy();
+    _radarChart = new Chart(canvas, {
+      type: "radar",
+      data: {
+        labels: labels,
+        datasets: [
+          { label: base.isBaseline ? "초기" : "이전", data: baseData,
+            borderColor: "#94a3b8", backgroundColor: "rgba(148,163,184,0.2)", borderWidth: 2, pointRadius: 3 },
+          { label: "최근", data: targetData,
+            borderColor: "#2563eb", backgroundColor: "rgba(37,99,235,0.25)", borderWidth: 2, pointRadius: 3 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { r: { min: 0, max: 100, ticks: { stepSize: 25, backdropColor: "transparent" },
+          pointLabels: { font: { size: 12, family: "inherit" } } } },
+        plugins: { legend: { position: "bottom" } }
+      }
+    });
+  }
+
+  /* 문항별 변화값 막대 차트 (+좋아짐 / -낮아짐) */
+  function renderItemBar(base, target) {
+    if (typeof Chart === "undefined") return;
+    var canvas = $("#itemBar"); if (!canvas) return;
+    var labels = [], deltas = [], colors = [];
+    SurveyData.sections.forEach(function (section) {
+      section.questions.forEach(function (q) {
+        var bv = base.answers[q.id], tv = target.answers[q.id];
+        if (bv == null && tv == null) return;
+        var d = (tv || 0) - (bv || 0);
+        // 라벨은 너무 길면 자름
+        var t = q.text.replace(/\s*\(.*\)\s*/g, "");
+        labels.push(t.length > 14 ? t.slice(0, 13) + "…" : t);
+        deltas.push(d);
+        colors.push(d > 0 ? "#22c55e" : (d < 0 ? "#ef4444" : "#cbd5e1"));
+      });
+    });
+    // 캔버스 높이를 문항 수에 맞춰 조정 (가로 막대)
+    canvas.parentNode.style.height = Math.max(260, labels.length * 22) + "px";
+    if (_itemChart) _itemChart.destroy();
+    _itemChart = new Chart(canvas, {
+      type: "bar",
+      data: { labels: labels, datasets: [{ label: "변화값", data: deltas, backgroundColor: colors }] },
+      options: {
+        indexAxis: "y", responsive: true, maintainAspectRatio: false,
+        scales: {
+          x: { suggestedMin: -4, suggestedMax: 4, ticks: { stepSize: 1 },
+            grid: { color: function (c) { return c.tick.value === 0 ? "#64748b" : "#e2e8f0"; } } },
+          y: { ticks: { font: { size: 11, family: "inherit" } } }
+        },
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: function (c) { var v = c.parsed.x; return (v > 0 ? "+" + v : v) + "점 변화"; } } } }
+      }
     });
   }
 
@@ -1010,7 +1089,7 @@
       var card = el("div", "history-card",
         '<div class="history-card-head">' +
           '<span class="history-date">' + fmtDate(r.date) + '</span>' +
-          '<span class="history-mood">' + (r.mood != null ? MOOD_FACES[r.mood] : "") + '</span>' +
+          '<span class="history-mood">' + (r.mood != null ? MOOD_FACES[r.mood] + ' <span class="history-mood-label">' + MOOD_LABELS[r.mood] + '</span>' : "") + '</span>' +
         '</div>' +
         '<div class="history-tags">' + tags.join("") + '</div>' +
         (r.memo ? '<p class="history-memo">📝 ' + escapeHtml(r.memo) + '</p>' : ""));
@@ -1034,7 +1113,8 @@
     var last7 = list.slice(0, 7);
     var exDays = last7.filter(function (r) { return r.exercises && r.exercises.length; }).length;
     var moods = last7.filter(function (r) { return r.mood != null; }).map(function (r) { return r.mood; });
-    var avg = moods.length ? MOOD_FACES[Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length)] : "–";
+    var avgM = moods.length ? Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length) : null;
+    var avg = avgM != null ? (MOOD_FACES[avgM] + " " + MOOD_LABELS[avgM]) : "–";
     $("#summaryGrid").innerHTML =
       sumItem(list.length, "총 기록") + sumItem(exDays + "일", "최근 7일 운동") + sumItem(avg, "최근 컨디션");
   }
@@ -1181,7 +1261,8 @@
     var pains = mrecs.filter(function (r) { return r.pain != null; }).map(function (r) { return r.pain; });
     var avgPain = pains.length ? LEVEL_LABELS[Math.round(pains.reduce(function (a, b) { return a + b; }) / pains.length)] : "–";
     var moods = mrecs.filter(function (r) { return r.mood != null; }).map(function (r) { return r.mood; });
-    var avgMood = moods.length ? MOOD_FACES[Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length)] : "–";
+    var avgMoodN = moods.length ? Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length) : null;
+    var avgMood = avgMoodN != null ? (MOOD_FACES[avgMoodN] + " " + MOOD_LABELS[avgMoodN]) : "–";
 
     $("#monthStats").innerHTML =
       monthStat("💪", exMin, "분", "운동 시간") +
@@ -1601,7 +1682,8 @@
       var totalAct = recs.reduce(function (s, r) { return s + actMin(r); }, 0);
       var exDays = recs.filter(function (r) { return r.exercises && r.exercises.length; }).length;
       var moods = recs.filter(function (r) { return r.mood != null; }).map(function (r) { return r.mood; });
-      var avgMood = moods.length ? MOOD_FACES[Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length)] : "–";
+      var avgMoodN = moods.length ? Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length) : null;
+      var avgMood = avgMoodN != null ? (MOOD_FACES[avgMoodN] + " " + MOOD_LABELS[avgMoodN]) : "–";
       var pains = recs.filter(function (r) { return r.pain != null; }).map(function (r) { return r.pain; });
       var avgPain = pains.length ? LEVEL_LABELS[Math.round(pains.reduce(function (a, b) { return a + b; }) / pains.length)] : "–";
       // 성장 점수 (간이: 기록일*20 + 연속보너스 생략, 운동 증가 가산)
@@ -1618,14 +1700,14 @@
         ' · 발병일: ' + escapeHtml(u.onset_date || "-") + '</div>' +
         '<button class="btn-outline btn-sm" id="adminExportBtn">⬇️ 이 참여자 CSV</button></div>';
 
-      // 요약 카드 그리드
-      html += '<div class="admin-stat-grid">' +
-        adminStat("📝", recs.length, "기록일") +
-        adminStat("💪", totalEx + "분", "누적 운동") +
-        adminStat("🗓️", totalAct + "분", "누적 활동") +
-        adminStat("📆", exDays + "일", "운동한 날") +
-        adminStat("⚡", avgPain, "평균 통증") +
-        adminStat("🙂", avgMood, "평균 컨디션") +
+      // 요약 카드 그리드 (메인 대시보드와 동일한 카드 스타일)
+      html += '<div class="dash-grid admin-dash">' +
+        dashCard("📝", recs.length, "기록일", "일", "blue") +
+        dashCard("💪", totalEx, "누적 운동", "분", "green") +
+        dashCard("🗓️", totalAct, "누적 활동", "분", "teal") +
+        dashCard("📆", exDays, "운동한 날", "일", "purple") +
+        dashCard("⚡", avgPain, "평균 통증", "", "red") +
+        dashCard("🙂", avgMood, "평균 컨디션", "", "amber") +
       '</div>';
 
       // ----- 기능평가 변화 -----
@@ -1674,7 +1756,7 @@
         }).join(", ");
         html += '<tr>' +
           '<td>' + fmtDate(r.date) + '</td>' +
-          '<td>' + (r.mood != null ? MOOD_FACES[r.mood] : "-") + '</td>' +
+          '<td>' + (r.mood != null ? MOOD_FACES[r.mood] + " " + MOOD_LABELS[r.mood] : "-") + '</td>' +
           '<td>' + LEVEL_LABELS[r.pain || 0] + '</td>' +
           '<td>' + LEVEL_LABELS[r.spasticity || 0] + '</td>' +
           '<td>' + (r.urine || 0) + '</td>' +

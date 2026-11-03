@@ -571,6 +571,17 @@ textarea { resize: vertical; }
 .cr-val { text-align: right; font-weight: 800; font-size: 15px; flex-shrink: 0; }
 .cr-val span { font-size: 12px; color: var(--text-muted); font-weight: 600; }
 
+/* ================= 차트 (레이더/막대) ================= */
+.chart-box { position: relative; height: 320px; margin-bottom: 14px; }
+.chart-box.tall { height: 420px; }
+
+/* 이력 카드 컨디션 한글 라벨 */
+.history-mood { display: inline-flex; align-items: center; gap: 6px; font-size: 24px; }
+.history-mood-label { font-size: 13px; font-weight: 700; color: var(--text-muted); }
+
+/* 관리자 상세 대시보드 카드 여백 */
+.admin-dash { margin-bottom: 18px; }
+
 /* ================= 반응형 (모바일) ================= */
 @media (max-width: 860px) {
   .record-layout { grid-template-columns: 1fr; }

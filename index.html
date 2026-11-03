@@ -15,6 +15,8 @@
   <meta name="apple-mobile-web-app-title" content="건강 지킴이" />
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <!-- Chart.js (레이더/막대 그래프) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <!-- ===================== 로그인 / 가입 ===================== -->
@@ -325,11 +327,14 @@
 
         <div class="card">
           <h2 class="card-title"><span aria-hidden="true">📊</span> 섹션별 변화</h2>
+          <div class="chart-box"><canvas id="sectionRadar"></canvas></div>
           <div id="sectionChanges"></div>
         </div>
 
         <div class="card">
           <h2 class="card-title"><span aria-hidden="true">🔍</span> 문항별 상세 변화</h2>
+          <p class="card-help">막대가 오른쪽(+)이면 좋아진 것, 왼쪽(−)이면 낮아진 항목입니다.</p>
+          <div class="chart-box tall"><canvas id="itemBar"></canvas></div>
           <div id="itemChanges"></div>
         </div>
 
