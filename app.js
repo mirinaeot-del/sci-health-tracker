@@ -56,19 +56,14 @@
   function moodText(m) { return m != null ? (MOOD_FACES[m] + " " + MOOD_LABELS[m]) : "–"; }
   function moodTextShort(m) { return m != null ? MOOD_LABELS[m] : "–"; }
 
-  /* 운동 카탈로그: 카테고리 → 종목 (SCI 참여자 재활 중심) */
+  /* 운동 카탈로그: 카테고리 → 종목 (재활 / 피트니스 / 레져·스포츠) */
   var EXERCISE_CATALOG = [
-    { id: "aerobic", label: "유산소", icon: "🏃",
-      items: ["휠체어 유산소", "런닝", "계단오르기", "줄넘기", "로잉", "트레드밀 보행", "실내/외 자전거", "수영/아쿠아"] },
-    { id: "strength", label: "근력", icon: "🏋️", mode: "combo",
-      bodyParts: ["상체", "하체", "체간(코어)"],
-      methods: ["맨몸", "바벨", "덤벨", "케틀벨", "머신"] },
-    { id: "flexibility", label: "유연성·밸런스", icon: "🤸",
-      items: ["스트레칭", "관절 가동범위(ROM)", "앉기 균형 훈련", "서기 균형 훈련", "요가", "필라테스"] },
-    { id: "rehab", label: "재활훈련", icon: "🦿",
-      items: ["상지기능훈련", "하지기능훈련", "일상생활훈련", "기립/체중부하 훈련", "트랜스퍼 훈련", "보행 훈련", "호흡 운동", "전기자극 치료(FES)", "통증치료", "기구 이용", "기타"] },
-    { id: "sports", label: "스포츠", icon: "🏅",
-      items: ["휠체어 럭비", "탁구", "수영/아쿠아", "마라톤", "기타"] }
+    { id: "rehab", label: "재활", icon: "🦿",
+      items: ["상지기능훈련", "하지기능훈련", "일상생활훈련", "앉기/서기훈련", "트랜스퍼훈련", "보행훈련", "근력/지구력운동", "스트레칭/관절운동", "호흡기능훈련", "통증치료", "전기자극치료", "기타"] },
+    { id: "fitness", label: "피트니스", icon: "🏋️",
+      items: ["헬스(웨이트 트레이닝)", "요가", "필라테스", "에어로빅", "걷기/달리기", "자전거(실내/외)", "줄넘기", "계단오르기", "인터벌 트레이닝", "기타"] },
+    { id: "sports", label: "레져/스포츠", icon: "🏅",
+      items: ["휠체어럭비", "탁구", "수영", "산책", "등산", "론볼", "게이트볼", "파크골프", "댄스", "기타"] }
   ];
   var EX_INTENSITIES = ["가벼움", "보통", "힘듦"];
 
@@ -95,8 +90,6 @@
       for (var i = 0; i < EXERCISE_CATALOG.length; i++) {
         var c = EXERCISE_CATALOG[i];
         if (c.items && c.items.indexOf(n) >= 0) return c;
-        // 근력(조합형): "상체·하체 / 덤벨 운동" 처럼 부위명으로 시작하면 근력
-        if (c.mode === "combo" && c.bodyParts.some(function (bp) { return n.indexOf(bp) === 0; })) return c;
       }
       return null;
     }
@@ -678,8 +671,7 @@
   var draft = { mood: null, pain: 0, spasticity: 0, urine: 0, bowel: 0, skin: null, exercises: [], activities: [] };
   var currentExCat = EXERCISE_CATALOG[0].id; // 현재 선택된 운동 카테고리
   // 묶어서 추가하기 위한 선택 상태 (카테고리 전환 시 초기화)
-  var picSel = [];                       // 일반 카테고리: 선택된 종목명 배열
-  var strengthSel = { parts: [], methods: [] }; // 근력: 선택된 부위/방법 배열
+  var picSel = [];                       // 운동 카테고리: 선택된 종목명 배열
   var actSel = [];                       // 활동: 선택된 종목명 배열
 
   function initRecord() {
@@ -765,7 +757,6 @@
       b.addEventListener("click", function () {
         currentExCat = cat.id;
         picSel = [];                           // 카테고리 바꾸면 선택 초기화
-        strengthSel = { parts: [], methods: [] };
         renderExerciseCats();
         renderExerciseItems();
       });
@@ -777,56 +768,7 @@
     box.innerHTML = "";
     var cat = EXERCISE_CATALOG.filter(function (c) { return c.id === currentExCat; })[0];
 
-    // 근력: 부위 × 방법 다중 조합 선택 UI
-    if (cat.mode === "combo") {
-      box.classList.add("combo");
-      // 부위 줄 (다중)
-      var partRow = el("div", "combo-row");
-      partRow.appendChild(el("span", "combo-label", "부위"));
-      cat.bodyParts.forEach(function (p) {
-        var on = strengthSel.parts.indexOf(p) >= 0;
-        var b = el("button", "item-btn sm" + (on ? " picked" : ""), escapeHtml(p));
-        b.type = "button";
-        b.addEventListener("click", function () {
-          toggleIn(strengthSel.parts, p);
-          renderExerciseItems();
-        });
-        partRow.appendChild(b);
-      });
-      box.appendChild(partRow);
-      // 방법 줄 (다중)
-      var methodRow = el("div", "combo-row");
-      methodRow.appendChild(el("span", "combo-label", "방법"));
-      cat.methods.forEach(function (m) {
-        var on = strengthSel.methods.indexOf(m) >= 0;
-        var b = el("button", "item-btn sm" + (on ? " picked" : ""), escapeHtml(m));
-        b.type = "button";
-        b.addEventListener("click", function () {
-          toggleIn(strengthSel.methods, m);
-          renderExerciseItems();
-        });
-        methodRow.appendChild(b);
-      });
-      box.appendChild(methodRow);
-      // 추가 버튼: 선택된 부위·방법을 "상체·하체 / 덤벨·바벨" 한 항목으로 묶음
-      var ready = strengthSel.parts.length && strengthSel.methods.length;
-      var name = ready ? (strengthSel.parts.join("·") + " / " + strengthSel.methods.join("·") + " 운동") : "";
-      var addBtn = el("button", "combo-add" + (ready ? " ready" : ""),
-        ready ? "＋ 묶어서 추가: " + escapeHtml(name) : "부위와 방법을 하나 이상 선택하세요");
-      addBtn.type = "button";
-      addBtn.disabled = !ready;
-      addBtn.addEventListener("click", function () {
-        if (!ready) return;
-        draft.exercises.push({ type: name, minutes: 30, intensity: "보통" });
-        strengthSel = { parts: [], methods: [] };
-        renderExerciseItems();
-        renderExerciseList();
-      });
-      box.appendChild(addBtn);
-      return;
-    }
-
-    // 일반 카테고리: 종목 선택(묶어서 추가) + 바로 추가 둘 다 지원
+    // 종목 선택(묶어서 추가) + 바로 추가 둘 다 지원
     box.classList.remove("combo");
     var itemsWrap = el("div", "combo-row wrap");
     cat.items.forEach(function (name) {
