@@ -107,6 +107,11 @@
 
   <!-- ===================== 앱 본체 (로그인 후) ===================== -->
   <div id="appRoot" hidden>
+  <!-- 관리자: 참여자 데이터 보기 모드 배너 -->
+  <div class="admin-view-banner" id="adminViewBanner" hidden>
+    <span>👁 <b id="adminViewName">참여자</b> 데이터를 보는 중입니다 (관리자 보기 모드)</span>
+    <button class="btn-sm" id="adminViewExit">← 관리자로 돌아가기</button>
+  </div>
   <!-- ===================== 상단 네비게이션 ===================== -->
   <header class="topnav">
     <div class="topnav-inner">
@@ -618,9 +623,15 @@
 
     <!-- ===================== 관리자 ===================== -->
     <section class="view" id="view-admin">
-      <div class="view-head">
-        <h1 class="view-title"><span aria-hidden="true">⚙️</span> 관리자</h1>
-        <p class="view-sub">전체 참여자 현황과 데이터를 확인합니다.</p>
+      <div class="view-head between">
+        <div>
+          <h1 class="view-title"><span aria-hidden="true">⚙️</span> 관리자</h1>
+          <p class="view-sub">전체 참여자 현황과 데이터를 확인합니다.</p>
+        </div>
+        <div class="view-head-actions">
+          <button class="btn-outline" id="exportAllRecordsBtn">⬇️ 전체 일일기록 CSV</button>
+          <button class="btn-outline" id="exportAllSurveysBtn">⬇️ 전체 기능평가 CSV</button>
+        </div>
       </div>
 
       <div class="dash-grid" id="adminStats"></div>

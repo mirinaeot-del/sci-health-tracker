@@ -18,6 +18,7 @@
     goals: null,          // {exMin, exDays, actMin, recordDays}
     settings: {}          // 온보딩 등 (localStorage 보조)
   };
+  var _viewBackup = null; // 관리자 보기 모드: 내 캐시 백업 (복원용)
 
   function settingsKey() { return "sci:v2:settings:" + (cache.userId || "anon"); }
   function loadSettings() {
@@ -204,8 +205,39 @@
         .then(function (r) { return r.data || []; });
     },
 
+    /* ===== 관리자 보기 모드: 다른 참여자 데이터로 캐시 임시 교체 ===== */
+    // 호출 시 내 캐시를 백업하고, 대상 참여자(profile+records+surveys+goals)로 교체한다.
+    viewAsUser: function (profileRow) {
+      var self = this;
+      var uid = profileRow.id;
+      return Promise.all([
+        self.fetchUserRecords(uid),
+        self.fetchUserSurveys(uid),
+        global.sb.from("goals").select("*").eq("user_id", uid).maybeSingle()
+      ]).then(function (res) {
+        if (!_viewBackup) _viewBackup = cache;      // 최초 1회만 백업(중첩 방지)
+        var recMap = {};
+        (res[0] || []).forEach(function (r) { recMap[r.date] = r; });
+        var g = res[2] && res[2].data;
+        cache = {
+          userId: uid,
+          profile: profileRow,
+          records: recMap,
+          surveys: (res[1] || []).slice(),
+          goals: g ? { exMin: g.ex_min, exDays: g.ex_days, actMin: g.act_min, recordDays: g.record_days } : null,
+          settings: {}            // 보기 모드에선 설정 불필요
+        };
+      });
+    },
+    // 내 데이터로 복원
+    restoreSelf: function () {
+      if (_viewBackup) { cache = _viewBackup; _viewBackup = null; }
+    },
+    isViewingOther: function () { return !!_viewBackup; },
+
     /* 로그아웃 시 캐시 비우기 */
     clearCache: function () {
+      _viewBackup = null;
       cache = { userId: null, profile: {}, records: {}, surveys: [], goals: null, settings: {} };
     }
   };

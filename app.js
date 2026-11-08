@@ -1527,7 +1527,12 @@
   /* =========================================================
      관리자 (전체 참여자 조회)
      ========================================================= */
-  function initAdmin() { /* 렌더는 showView에서 */ }
+  function initAdmin() {
+    var exitBtn = $("#adminViewExit");
+    if (exitBtn) exitBtn.addEventListener("click", exitAdminView);
+    var r = $("#exportAllRecordsBtn"); if (r) r.addEventListener("click", exportAllRecords);
+    var s = $("#exportAllSurveysBtn"); if (s) s.addEventListener("click", exportAllSurveys);
+  }
 
   function renderAdmin() {
     var statsBox = $("#adminStats");
@@ -1615,7 +1620,11 @@
         ' · 아이디: ' + escapeHtml(u.username || "-") +
         ' · 손상: ' + escapeHtml(u.injury_level || "-") + "/" + escapeHtml(u.injury_degree || "-") +
         ' · 발병일: ' + escapeHtml(u.onset_date || "-") + '</div>' +
-        '<button class="btn-outline btn-sm" id="adminExportBtn">⬇️ 이 참여자 CSV</button></div>';
+        '<div class="admin-detail-actions">' +
+          '<button class="btn-outline btn-sm" id="adminViewMonthly">🗓️ 월별 분석 보기</button>' +
+          '<button class="btn-outline btn-sm" id="adminViewAnalysis">📈 비교 분석 보기</button>' +
+          '<button class="btn-outline btn-sm" id="adminExportBtn">⬇️ 이 참여자 CSV</button>' +
+        '</div></div>';
 
       // 요약 카드 그리드 (메인 대시보드와 동일한 카드 스타일)
       html += '<div class="dash-grid admin-dash">' +
@@ -1701,8 +1710,102 @@
 
       body.innerHTML = html;
       $("#adminExportBtn").addEventListener("click", function () { exportUserCSV(u, recs); });
+      $("#adminViewMonthly").addEventListener("click", function () { adminViewAs(u, "monthly"); });
+      $("#adminViewAnalysis").addEventListener("click", function () { adminViewAs(u, "analysis"); });
       $("#adminDetailCard").scrollIntoView({ behavior: "smooth", block: "start" });
     }).catch(function (ex) { body.innerHTML = '<p class="card-help">불러오기 실패</p>'; console.error(ex); });
+  }
+
+  /* 관리자 보기 모드: 참여자 데이터로 전환해 월별/비교 분석 화면을 본다 */
+  function adminViewAs(u, view) {
+    Store.viewAsUser(u).then(function () {
+      $("#adminViewBanner").hidden = false;
+      $("#adminViewName").textContent = (u.name || u.nickname || u.username || "참여자");
+      showView(view);
+    }).catch(function (ex) { toast("불러오기 실패"); console.error(ex); });
+  }
+  /* 보기 모드 종료 → 내 데이터 복원 */
+  function exitAdminView() {
+    Store.restoreSelf();
+    $("#adminViewBanner").hidden = true;
+    refreshUserChip();
+    showView("admin");
+  }
+
+  /* CSV 파일 다운로드 헬퍼 (rows: 2차원 배열) */
+  function downloadCSV(rows, filename) {
+    var csv = rows.map(function (row) {
+      return row.map(function (c) { var s = String(c == null ? "" : c); return (/[",\n]/.test(s)) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(",");
+    }).join("\n");
+    var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    var a = el("a"); a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  }
+
+  /* 관리자: 전체 참여자 일일기록 통합 CSV (참여자 식별 열 포함) */
+  function exportAllRecords() {
+    toast("전체 기록을 모으는 중...");
+    Store.fetchAllUsers().then(function (users) {
+      return Promise.all(users.map(function (u) {
+        return Store.fetchUserRecords(u.id).then(function (recs) { return { u: u, recs: recs }; });
+      }));
+    }).then(function (all) {
+      var headers = ["참여자아이디", "닉네임", "이름", "손상레벨", "손상정도", "날짜", "컨디션(1-5)", "통증", "경직",
+        "소변횟수", "배변횟수", "피부상태", "운동", "운동시간(분)", "활동", "활동시간(분)", "메모"];
+      var rows = [headers];
+      all.forEach(function (x) {
+        var u = x.u;
+        x.recs.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).forEach(function (r) {
+          var exNames = (r.exercises || []).map(function (e) { return e.type + (e.minutes ? "(" + e.minutes + "분/" + e.intensity + ")" : ""); }).join(" | ");
+          var exMin = (r.exercises || []).reduce(function (s, e) { return s + (e.minutes || 0); }, 0);
+          var acNames = (r.activities || []).map(function (a) { return a.name + (a.minutes ? "(" + a.minutes + "분)" : ""); }).join(" | ");
+          var acMin = (r.activities || []).reduce(function (s, a) { return s + (a.minutes || 0); }, 0);
+          rows.push([u.username || "", u.nickname || "", u.name || "", u.injury_level || "", u.injury_degree || "",
+            r.date, r.mood != null ? r.mood : "", r.pain != null ? LEVEL_LABELS[r.pain] : "", r.spasticity != null ? LEVEL_LABELS[r.spasticity] : "",
+            r.urine != null ? r.urine : "", r.bowel != null ? r.bowel : "", r.skin ? SKIN_LABELS[r.skin] : "",
+            exNames, exMin || "", acNames, acMin || "", (r.memo || "").replace(/\n/g, " ")]);
+        });
+      });
+      if (rows.length === 1) { toast("기록이 없어요"); return; }
+      downloadCSV(rows, "전체_일일기록_" + todayStr() + ".csv");
+      toast("전체 일일기록 CSV를 저장했어요");
+    }).catch(function (ex) { toast("불러오기 실패"); console.error(ex); });
+  }
+
+  /* 관리자: 전체 참여자 기능평가 통합 CSV (초기/최근/문항별) */
+  function exportAllSurveys() {
+    toast("기능평가를 모으는 중...");
+    Store.fetchAllUsers().then(function (users) {
+      return Promise.all(users.map(function (u) {
+        return Store.fetchUserSurveys(u.id).then(function (svs) { return { u: u, svs: svs }; });
+      }));
+    }).then(function (all) {
+      // 문항 라벨을 헤더로 (초기/최근 쌍)
+      var qcols = [];
+      SurveyData.sections.forEach(function (sec) {
+        sec.questions.forEach(function (q) { qcols.push({ id: q.id, text: q.text }); });
+      });
+      var headers = ["참여자아이디", "닉네임", "이름", "손상레벨", "손상정도", "평가횟수",
+        "초기일자", "최근일자", "초기총점(100)", "최근총점(100)", "총점변화"];
+      qcols.forEach(function (q) { headers.push(q.text + "(초기)"); headers.push(q.text + "(최근)"); });
+      var rows = [headers];
+      all.forEach(function (x) {
+        var u = x.u, svs = x.svs;
+        if (!svs.length) return;
+        var first = svs[0], latest = svs[svs.length - 1];
+        var bp = SurveyData.totalPercent(first.answers), tp = SurveyData.totalPercent(latest.answers);
+        var row = [u.username || "", u.nickname || "", u.name || "", u.injury_level || "", u.injury_degree || "",
+          svs.length, (first.createdAt || "").slice(0, 10), (latest.createdAt || "").slice(0, 10), bp, tp, (tp - bp)];
+        qcols.forEach(function (q) {
+          row.push(first.answers[q.id] != null ? first.answers[q.id] : "");
+          row.push(latest.answers[q.id] != null ? latest.answers[q.id] : "");
+        });
+        rows.push(row);
+      });
+      if (rows.length === 1) { toast("기능평가 기록이 없어요"); return; }
+      downloadCSV(rows, "전체_기능평가_" + todayStr() + ".csv");
+      toast("전체 기능평가 CSV를 저장했어요");
+    }).catch(function (ex) { toast("불러오기 실패"); console.error(ex); });
   }
 
   function adminStat(icon, num, label) {
