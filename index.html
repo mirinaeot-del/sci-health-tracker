@@ -323,7 +323,13 @@
           </div>
         </div>
 
-        <div class="card total-change-card" id="totalChangeCard"></div>
+        <div class="total-trend-row">
+          <div class="card total-change-card" id="totalChangeCard"></div>
+          <div class="card trend-card-wrap">
+            <h2 class="card-title"><span aria-hidden="true">📉</span> 총점 추이</h2>
+            <div class="trend-chart" id="trendChart"></div>
+          </div>
+        </div>
 
         <div class="card">
           <h2 class="card-title"><span aria-hidden="true">📊</span> 섹션별 변화</h2>
@@ -338,11 +344,6 @@
           <p class="card-help">문항마다 <b>이전</b>과 <b>최근</b> 점수를 나란히 겹쳐 보여줍니다 (0~4점).</p>
           <div class="chart-box tall"><canvas id="itemBar"></canvas></div>
           <div id="itemChanges"></div>
-        </div>
-
-        <div class="card">
-          <h2 class="card-title"><span aria-hidden="true">📉</span> 총점 추이</h2>
-          <div class="trend-chart" id="trendChart"></div>
         </div>
       </div>
     </section>

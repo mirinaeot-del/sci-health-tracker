@@ -585,6 +585,15 @@ textarea { resize: vertical; }
   .section-change-layout .scl-left .chart-box { height: 300px; }
 }
 
+/* 종합 변화 + 총점 추이 2단 */
+.total-trend-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: stretch; }
+.total-trend-row > .card { margin-bottom: 18px; }
+.trend-card-wrap { display: flex; flex-direction: column; }
+.trend-card-wrap .trend-chart { flex: 1; }
+@media (max-width: 760px) {
+  .total-trend-row { grid-template-columns: 1fr; }
+}
+
 /* 이력 카드 컨디션 한글 라벨 */
 .history-mood { display: inline-flex; align-items: center; gap: 6px; font-size: 24px; }
 .history-mood-label { font-size: 13px; font-weight: 700; color: var(--text-muted); }
