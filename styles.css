@@ -245,7 +245,8 @@ body {
 .item-group { margin-bottom: 18px; }
 .item-group:last-child { margin-bottom: 0; }
 .item-group-title { font-weight: 700; font-size: 15px; margin-bottom: 8px; color: var(--primary); }
-.item-change { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 10px; margin-bottom: 4px; background: var(--bg); }
+.item-change { padding: 10px 12px; border-radius: 10px; margin-bottom: 6px; background: var(--bg); }
+.item-change .ic-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 7px; }
 .item-change .ic-text { font-size: 14px; }
 .item-change .ic-scores { font-size: 14px; font-weight: 700; white-space: nowrap; color: var(--text-muted); }
 .item-change .ic-arrow { font-weight: 800; }
@@ -253,6 +254,11 @@ body {
 .item-change.up .ic-arrow { color: #15803d; }
 .item-change.down { background: #fef2f2; }
 .item-change.down .ic-arrow { color: #b91c1c; }
+/* 겹친 막대: 회색(이전) 위에 파랑(최근)을 겹쳐 표시 */
+.item-change .ic-bar { position: relative; height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden; }
+.item-change .ic-bar-base { position: absolute; left: 0; top: 0; height: 100%; background: #94a3b8; border-radius: 6px; }
+.item-change .ic-bar-target { position: absolute; left: 0; top: 0; height: 100%; background: var(--primary-2); border-radius: 6px; opacity: 0.85; }
+.item-change.down .ic-bar-target { background: #ef4444; }
 .item-change.same .ic-arrow { color: var(--text-muted); }
 
 .trend-chart { display: flex; align-items: flex-end; gap: 14px; height: 200px; padding: 10px 4px 0; overflow-x: auto; }

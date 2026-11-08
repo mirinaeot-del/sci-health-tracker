@@ -555,25 +555,32 @@
         var bv = base.answers[q.id];
         var tv = target.answers[q.id];
         if (bv == null && tv == null) return;
-        var d = (tv || 0) - (bv || 0);
+        var b0 = bv || 0, t0 = tv || 0;
+        var d = t0 - b0;
         var cls = d > 0 ? "up" : (d < 0 ? "down" : "same");
         var arrow = d > 0 ? "▲" : (d < 0 ? "▼" : "–");
+        var basePct = b0 / 4 * 100, targetPct = t0 / 4 * 100;
         var row = el("div", "item-change " + cls);
         row.innerHTML =
-          '<span class="ic-text">' + escapeHtml(q.text) + '</span>' +
-          '<span class="ic-scores">' + (bv != null ? bv : "-") + ' → ' + (tv != null ? tv : "-") +
-            ' <span class="ic-arrow">' + arrow + (d !== 0 ? " " + (d > 0 ? "+" : "") + d : "") + '</span></span>';
+          '<div class="ic-top">' +
+            '<span class="ic-text">' + escapeHtml(q.text) + '</span>' +
+            '<span class="ic-scores">' + (bv != null ? bv : "-") + ' → ' + (tv != null ? tv : "-") +
+              ' <span class="ic-arrow">' + arrow + (d !== 0 ? " " + (d > 0 ? "+" : "") + d : "") + '</span></span>' +
+          '</div>' +
+          '<div class="ic-bar">' +
+            '<div class="ic-bar-base" style="width:' + basePct + '%"></div>' +
+            '<div class="ic-bar-target" style="width:' + targetPct + '%"></div>' +
+          '</div>';
         group.appendChild(row);
       });
       itemBox.appendChild(group);
     });
 
-    // 차트 (레이더: 섹션별, 막대: 문항별 변화값)
+    // 섹션별 레이더 차트
     renderSectionRadar(base, target);
-    renderItemBar(base, target);
   }
 
-  var _radarChart = null, _itemChart = null;
+  var _radarChart = null;
 
   /* 섹션별 변화 레이더(방사형) 차트: 이전 vs 최근 */
   function renderSectionRadar(base, target) {
@@ -603,45 +610,6 @@
         scales: { r: { min: 0, max: 100, ticks: { stepSize: 25, backdropColor: "transparent" },
           pointLabels: { font: { size: 12, family: "inherit" } } } },
         plugins: { legend: { position: "bottom" } }
-      }
-    });
-  }
-
-  /* 문항별 변화값 막대 차트 (+좋아짐 / -낮아짐) */
-  /* 문항별: 이전 vs 최근 점수를 나란히 겹쳐(그룹) 보여주는 막대 차트 */
-  function renderItemBar(base, target) {
-    if (typeof Chart === "undefined") return;
-    var canvas = $("#itemBar"); if (!canvas) return;
-    var labels = [], baseVals = [], targetVals = [];
-    SurveyData.sections.forEach(function (section) {
-      section.questions.forEach(function (q) {
-        var bv = base.answers[q.id], tv = target.answers[q.id];
-        if (bv == null && tv == null) return;
-        var t = q.text.replace(/\s*\(.*\)\s*/g, "");
-        labels.push(t.length > 16 ? t.slice(0, 15) + "…" : t);
-        baseVals.push(bv != null ? bv : 0);
-        targetVals.push(tv != null ? tv : 0);
-      });
-    });
-    canvas.parentNode.style.height = Math.max(300, labels.length * 34) + "px";
-    if (_itemChart) _itemChart.destroy();
-    _itemChart = new Chart(canvas, {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [
-          { label: base.isBaseline ? "초기" : "이전", data: baseVals, backgroundColor: "#cbd5e1" },
-          { label: "최근", data: targetVals, backgroundColor: "#2563eb" }
-        ]
-      },
-      options: {
-        indexAxis: "y", responsive: true, maintainAspectRatio: false,
-        scales: {
-          x: { min: 0, max: 4, ticks: { stepSize: 1 }, title: { display: true, text: "점수 (0~4)" } },
-          y: { ticks: { font: { size: 11, family: "inherit" } } }
-        },
-        plugins: { legend: { position: "bottom" },
-          tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + c.parsed.x + "점"; } } } }
       }
     });
   }
