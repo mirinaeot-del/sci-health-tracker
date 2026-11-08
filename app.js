@@ -559,7 +559,11 @@
         var d = t0 - b0;
         var cls = d > 0 ? "up" : (d < 0 ? "down" : "same");
         var arrow = d > 0 ? "▲" : (d < 0 ? "▼" : "–");
-        var basePct = b0 / 4 * 100, targetPct = t0 / 4 * 100;
+        // 누적 막대: 연한색=공통(min), 진한색=증가분 / 감소 시 빨강=감소분
+        var common = Math.min(b0, t0);
+        var diff = Math.abs(d);
+        var commonPct = common / 4 * 100, diffPct = diff / 4 * 100;
+        var seg2cls = d >= 0 ? "ic-seg-up" : "ic-seg-down";
         var row = el("div", "item-change " + cls);
         row.innerHTML =
           '<div class="ic-top">' +
@@ -567,9 +571,9 @@
             '<span class="ic-scores">' + (bv != null ? bv : "-") + ' → ' + (tv != null ? tv : "-") +
               ' <span class="ic-arrow">' + arrow + (d !== 0 ? " " + (d > 0 ? "+" : "") + d : "") + '</span></span>' +
           '</div>' +
-          '<div class="ic-bar">' +
-            '<div class="ic-bar-base" style="width:' + basePct + '%"></div>' +
-            '<div class="ic-bar-target" style="width:' + targetPct + '%"></div>' +
+          '<div class="ic-stack">' +
+            (common > 0 ? '<div class="ic-seg ic-seg-common" style="width:' + commonPct + '%">' + common + '</div>' : '') +
+            (diff > 0 ? '<div class="ic-seg ' + seg2cls + '" style="width:' + diffPct + '%">' + (d > 0 ? "+" : "-") + diff + '</div>' : '') +
           '</div>';
         group.appendChild(row);
       });

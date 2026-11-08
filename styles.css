@@ -254,11 +254,12 @@ body {
 .item-change.up .ic-arrow { color: #15803d; }
 .item-change.down { background: #fef2f2; }
 .item-change.down .ic-arrow { color: #b91c1c; }
-/* 겹친 막대: 회색(이전) 위에 파랑(최근)을 겹쳐 표시 */
-.item-change .ic-bar { position: relative; height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden; }
-.item-change .ic-bar-base { position: absolute; left: 0; top: 0; height: 100%; background: #94a3b8; border-radius: 6px; }
-.item-change .ic-bar-target { position: absolute; left: 0; top: 0; height: 100%; background: var(--primary-2); border-radius: 6px; opacity: 0.85; }
-.item-change.down .ic-bar-target { background: #ef4444; }
+/* 누적 막대: 연한색(공통) + 진한색(증가분) / 감소분은 빨강 */
+.item-change .ic-stack { display: flex; height: 22px; background: #f1f5f9; border-radius: 6px; overflow: hidden; }
+.item-change .ic-seg { display: flex; align-items: center; justify-content: flex-end; padding: 0 8px; font-size: 12px; font-weight: 800; color: #fff; white-space: nowrap; min-width: 0; }
+.item-change .ic-seg-common { background: #5b9bb5; }
+.item-change .ic-seg-up { background: #0f4c5c; }
+.item-change .ic-seg-down { background: #ef4444; }
 .item-change.same .ic-arrow { color: var(--text-muted); }
 
 .trend-chart { display: flex; align-items: flex-end; gap: 14px; height: 200px; padding: 10px 4px 0; overflow-x: auto; }
