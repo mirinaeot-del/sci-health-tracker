@@ -1031,7 +1031,7 @@
     var exDays = last7.filter(function (r) { return r.exercises && r.exercises.length; }).length;
     var moods = last7.filter(function (r) { return r.mood != null; }).map(function (r) { return r.mood; });
     var avgM = moods.length ? Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length) : null;
-    var avg = avgM != null ? (MOOD_FACES[avgM] + " " + MOOD_LABELS[avgM]) : "–";
+    var avg = avgM != null ? MOOD_LABELS[avgM] : "–";
     $("#summaryGrid").innerHTML =
       sumItem(list.length, "총 기록") + sumItem(exDays + "일", "최근 7일 운동") + sumItem(avg, "최근 컨디션");
   }
@@ -1179,7 +1179,7 @@
     var avgPain = pains.length ? LEVEL_LABELS[Math.round(pains.reduce(function (a, b) { return a + b; }) / pains.length)] : "–";
     var moods = mrecs.filter(function (r) { return r.mood != null; }).map(function (r) { return r.mood; });
     var avgMoodN = moods.length ? Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length) : null;
-    var avgMood = avgMoodN != null ? (MOOD_FACES[avgMoodN] + " " + MOOD_LABELS[avgMoodN]) : "–";
+    var avgMood = avgMoodN != null ? MOOD_LABELS[avgMoodN] : "–";
 
     $("#monthStats").innerHTML =
       monthStat("💪", exMin, "분", "운동 시간") +
@@ -1600,7 +1600,7 @@
       var exDays = recs.filter(function (r) { return r.exercises && r.exercises.length; }).length;
       var moods = recs.filter(function (r) { return r.mood != null; }).map(function (r) { return r.mood; });
       var avgMoodN = moods.length ? Math.round(moods.reduce(function (a, b) { return a + b; }) / moods.length) : null;
-      var avgMood = avgMoodN != null ? (MOOD_FACES[avgMoodN] + " " + MOOD_LABELS[avgMoodN]) : "–";
+      var avgMood = avgMoodN != null ? MOOD_LABELS[avgMoodN] : "–";
       var pains = recs.filter(function (r) { return r.pain != null; }).map(function (r) { return r.pain; });
       var avgPain = pains.length ? LEVEL_LABELS[Math.round(pains.reduce(function (a, b) { return a + b; }) / pains.length)] : "–";
       // 성장 점수 (간이: 기록일*20 + 연속보너스 생략, 운동 증가 가산)
@@ -1627,32 +1627,45 @@
         dashCard("🙂", avgMood, "평균 컨디션", "", "amber") +
       '</div>';
 
-      // ----- 기능평가 변화 -----
+      // ----- 기능평가 비교 분석 -----
       if (surveys.length) {
         var first = surveys[0], latest = surveys[surveys.length - 1];
         var basePct = SurveyData.totalPercent(first.answers);
         var latestPct = SurveyData.totalPercent(latest.answers);
         var dPct = latestPct - basePct;
-        html += '<h3 class="admin-sub">📋 기능평가</h3>';
-        html += '<p class="admin-line">총 <b>' + surveys.length + '회</b> 평가 · ';
+        html += '<h3 class="admin-sub">📋 기능평가 비교 분석</h3>';
         if (surveys.length >= 2) {
-          html += '초기 <b>' + basePct + '점</b> → 최근 <b>' + latestPct + '점</b> ' +
-            '<span class="chg ' + (dPct > 0 ? 'up' : dPct < 0 ? 'down' : 'same') + '">' + (dPct > 0 ? '▲ +' + dPct : dPct < 0 ? '▼ ' + dPct : '– 0') + '점</span>';
-        } else {
-          html += '최근 점수 <b>' + latestPct + '점</b> (재평가 시 변화 비교 가능)';
-        }
-        html += '</p>';
-        // 섹션별 변화 (2회 이상일 때)
-        if (surveys.length >= 2) {
-          html += '<div class="admin-sec-changes">';
+          html += '<p class="admin-line">총 <b>' + surveys.length + '회</b> 평가 · 초기 <b>' + basePct + '점</b> → 최근 <b>' + latestPct + '점</b> ' +
+            '<span class="chg ' + (dPct > 0 ? 'up' : dPct < 0 ? 'down' : 'same') + '">' + (dPct > 0 ? '▲ +' + dPct : dPct < 0 ? '▼ ' + dPct : '– 0') + '점</span></p>';
+          // 섹션별 비교 표 (이전 → 최근, 변화)
+          html += '<div class="table-scroll"><table class="admin-table"><thead><tr>' +
+            '<th>영역</th><th>초기</th><th>최근</th><th>변화</th></tr></thead><tbody>';
           SurveyData.sections.forEach(function (sec) {
-            var bs = SurveyData.sectionScore(sec, first.answers);
-            var ts = SurveyData.sectionScore(sec, latest.answers);
-            var d = ts - bs;
-            html += '<span class="admin-sec-chip ' + (d > 0 ? 'up' : d < 0 ? 'down' : 'same') + '">' +
-              sec.icon + ' ' + sec.title + ' ' + (d > 0 ? '+' + d : d) + '</span>';
+            var smax = SurveyData.sectionMax(sec);
+            var bp = Math.round(SurveyData.sectionScore(sec, first.answers) / smax * 100);
+            var tp = Math.round(SurveyData.sectionScore(sec, latest.answers) / smax * 100);
+            var sd = tp - bp;
+            var scls = sd > 0 ? "up" : (sd < 0 ? "down" : "same");
+            html += '<tr><td>' + sec.icon + ' ' + sec.title + '</td><td>' + bp + '%</td><td>' + tp + '%</td>' +
+              '<td><span class="chg ' + scls + '">' + (sd > 0 ? "▲ +" + sd : sd < 0 ? "▼ " + sd : "– 0") + '</span></td></tr>';
           });
-          html += '</div>';
+          html += '</tbody></table></div>';
+          // 문항별 변화 (0~4점)
+          html += '<div class="table-scroll" style="margin-top:12px;"><table class="admin-table"><thead><tr>' +
+            '<th>문항</th><th>초기</th><th>최근</th><th>변화</th></tr></thead><tbody>';
+          SurveyData.sections.forEach(function (sec) {
+            sec.questions.forEach(function (q) {
+              var bv = first.answers[q.id], tv = latest.answers[q.id];
+              if (bv == null && tv == null) return;
+              var b0 = bv || 0, t0 = tv || 0, qd = t0 - b0;
+              var qcls = qd > 0 ? "up" : (qd < 0 ? "down" : "same");
+              html += '<tr><td>' + escapeHtml(q.text) + '</td><td>' + b0 + '</td><td>' + t0 + '</td>' +
+                '<td><span class="chg ' + qcls + '">' + (qd > 0 ? "▲ +" + qd : qd < 0 ? "▼ " + qd : "– 0") + '</span></td></tr>';
+            });
+          });
+          html += '</tbody></table></div>';
+        } else {
+          html += '<p class="admin-line">총 <b>1회</b> 평가 · 최근 점수 <b>' + latestPct + '점</b> (재평가 시 초기 대비 비교 분석이 표시됩니다)</p>';
         }
       }
 

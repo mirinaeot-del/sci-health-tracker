@@ -127,8 +127,9 @@ body {
 .dash-card.amber { border-left-color: #f59e0b; }
 .dash-card.teal { border-left-color: #0d9488; }
 .dash-card.red { border-left-color: #ef4444; }
-.dash-icon { font-size: 34px; }
-.dash-num { font-size: 30px; font-weight: 800; line-height: 1.1; }
+.dash-icon { font-size: 34px; flex-shrink: 0; }
+.dash-body { min-width: 0; }
+.dash-num { font-size: 30px; font-weight: 800; line-height: 1.15; word-break: keep-all; overflow-wrap: anywhere; }
 .dash-unit { font-size: 15px; font-weight: 600; color: var(--text-muted); margin-left: 3px; }
 .dash-label { font-size: 14px; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
 .dash-delta { display: inline-block; font-size: 13px; font-weight: 700; padding: 1px 8px; border-radius: 10px; margin-left: 6px; }
