@@ -575,6 +575,16 @@ textarea { resize: vertical; }
 .chart-box { position: relative; height: 320px; margin-bottom: 14px; }
 .chart-box.tall { height: 420px; }
 
+/* 섹션별 변화: 좌(레이더) / 우(막대 내용) 2단 */
+.section-change-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: center; }
+.section-change-layout .scl-left { min-width: 0; }
+.section-change-layout .scl-left .chart-box { margin-bottom: 0; height: 340px; }
+.section-change-layout .scl-right { min-width: 0; }
+@media (max-width: 760px) {
+  .section-change-layout { grid-template-columns: 1fr; }
+  .section-change-layout .scl-left .chart-box { height: 300px; }
+}
+
 /* 이력 카드 컨디션 한글 라벨 */
 .history-mood { display: inline-flex; align-items: center; gap: 6px; font-size: 24px; }
 .history-mood-label { font-size: 13px; font-weight: 700; color: var(--text-muted); }

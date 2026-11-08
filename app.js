@@ -608,37 +608,40 @@
   }
 
   /* 문항별 변화값 막대 차트 (+좋아짐 / -낮아짐) */
+  /* 문항별: 이전 vs 최근 점수를 나란히 겹쳐(그룹) 보여주는 막대 차트 */
   function renderItemBar(base, target) {
     if (typeof Chart === "undefined") return;
     var canvas = $("#itemBar"); if (!canvas) return;
-    var labels = [], deltas = [], colors = [];
+    var labels = [], baseVals = [], targetVals = [];
     SurveyData.sections.forEach(function (section) {
       section.questions.forEach(function (q) {
         var bv = base.answers[q.id], tv = target.answers[q.id];
         if (bv == null && tv == null) return;
-        var d = (tv || 0) - (bv || 0);
-        // 라벨은 너무 길면 자름
         var t = q.text.replace(/\s*\(.*\)\s*/g, "");
-        labels.push(t.length > 14 ? t.slice(0, 13) + "…" : t);
-        deltas.push(d);
-        colors.push(d > 0 ? "#22c55e" : (d < 0 ? "#ef4444" : "#cbd5e1"));
+        labels.push(t.length > 16 ? t.slice(0, 15) + "…" : t);
+        baseVals.push(bv != null ? bv : 0);
+        targetVals.push(tv != null ? tv : 0);
       });
     });
-    // 캔버스 높이를 문항 수에 맞춰 조정 (가로 막대)
-    canvas.parentNode.style.height = Math.max(260, labels.length * 22) + "px";
+    canvas.parentNode.style.height = Math.max(300, labels.length * 34) + "px";
     if (_itemChart) _itemChart.destroy();
     _itemChart = new Chart(canvas, {
       type: "bar",
-      data: { labels: labels, datasets: [{ label: "변화값", data: deltas, backgroundColor: colors }] },
+      data: {
+        labels: labels,
+        datasets: [
+          { label: base.isBaseline ? "초기" : "이전", data: baseVals, backgroundColor: "#cbd5e1" },
+          { label: "최근", data: targetVals, backgroundColor: "#2563eb" }
+        ]
+      },
       options: {
         indexAxis: "y", responsive: true, maintainAspectRatio: false,
         scales: {
-          x: { suggestedMin: -4, suggestedMax: 4, ticks: { stepSize: 1 },
-            grid: { color: function (c) { return c.tick.value === 0 ? "#64748b" : "#e2e8f0"; } } },
+          x: { min: 0, max: 4, ticks: { stepSize: 1 }, title: { display: true, text: "점수 (0~4)" } },
           y: { ticks: { font: { size: 11, family: "inherit" } } }
         },
-        plugins: { legend: { display: false },
-          tooltip: { callbacks: { label: function (c) { var v = c.parsed.x; return (v > 0 ? "+" + v : v) + "점 변화"; } } } }
+        plugins: { legend: { position: "bottom" },
+          tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + c.parsed.x + "점"; } } } }
       }
     });
   }

@@ -327,13 +327,15 @@
 
         <div class="card">
           <h2 class="card-title"><span aria-hidden="true">📊</span> 섹션별 변화</h2>
-          <div class="chart-box"><canvas id="sectionRadar"></canvas></div>
-          <div id="sectionChanges"></div>
+          <div class="section-change-layout">
+            <div class="scl-left"><div class="chart-box"><canvas id="sectionRadar"></canvas></div></div>
+            <div class="scl-right"><div id="sectionChanges"></div></div>
+          </div>
         </div>
 
         <div class="card">
           <h2 class="card-title"><span aria-hidden="true">🔍</span> 문항별 상세 변화</h2>
-          <p class="card-help">막대가 오른쪽(+)이면 좋아진 것, 왼쪽(−)이면 낮아진 항목입니다.</p>
+          <p class="card-help">문항마다 <b>이전</b>과 <b>최근</b> 점수를 나란히 겹쳐 보여줍니다 (0~4점).</p>
           <div class="chart-box tall"><canvas id="itemBar"></canvas></div>
           <div id="itemChanges"></div>
         </div>
