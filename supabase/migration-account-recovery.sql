@@ -6,6 +6,32 @@
 
 create extension if not exists pgcrypto with schema extensions;
 
+-- 0) 이름(name) 칸 준비 (migration-add-name.sql 을 실행하지 않았어도 동작하도록 포함)
+alter table public.profiles add column if not exists name text;
+alter table public.profiles alter column nickname drop not null;
+
+-- 가입 시 이름도 저장하도록 트리거 함수 갱신
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, username, name, nickname, injury_level, injury_degree, onset_date)
+  values (
+    new.id,
+    new.email,
+    nullif(new.raw_user_meta_data->>'name', ''),
+    nullif(new.raw_user_meta_data->>'nickname', ''),
+    nullif(new.raw_user_meta_data->>'injury_level', ''),
+    nullif(new.raw_user_meta_data->>'injury_degree', ''),
+    (nullif(new.raw_user_meta_data->>'onset_date', ''))::date
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
 -- 1) 비밀번호 재설정 요청 테이블 (관리자만 조회/수정)
 create table if not exists public.password_requests (
   id          uuid primary key default gen_random_uuid(),
