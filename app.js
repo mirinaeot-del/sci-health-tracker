@@ -1426,6 +1426,11 @@
      ========================================================= */
   function initProfile() {
     $("#saveProfileBtn").addEventListener("click", function () {
+      if ($("#pName").value.trim().length < 2) {
+        $("#profileHint").textContent = "이름은 필수입니다. 2자 이상 입력해 주세요.";
+        $("#pName").focus();
+        return;
+      }
       Store.saveProfile({
         name: $("#pName").value.trim(),
         nick: $("#pNick").value.trim(),
@@ -2042,7 +2047,7 @@
       var name = $("#suName").value.trim(), nick = $("#suNick").value.trim();
       if (!id || id.length < 3) { err.textContent = "아이디는 3자 이상 입력하세요."; return; }
       if (!pw || pw.length < 6) { err.textContent = "비밀번호는 6자 이상 입력하세요."; return; }
-      if (!name) { err.textContent = "이름을 입력하세요."; return; }
+      if (name.length < 2) { err.textContent = "이름을 입력하세요. (2자 이상, 필수)"; $("#suName").focus(); return; }
       Auth.signup(id, pw, {
         name: name,
         nickname: nick,
@@ -2062,6 +2067,7 @@
       }).catch(function (ex) {
         var msg = (ex && ex.message) || "";
         if (/already registered|already exists/i.test(msg)) err.textContent = "이미 사용 중인 아이디입니다.";
+        else if (/NAME_REQUIRED|Database error saving new user/i.test(msg)) err.textContent = "이름을 입력해야 가입할 수 있습니다. 화면을 새로고침한 뒤 이름을 입력해 다시 시도해 주세요.";
         else err.textContent = "가입 실패: " + (msg || "잠시 후 다시 시도하세요.");
         console.error(ex);
       });

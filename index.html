@@ -105,7 +105,7 @@
         </div>
         <div class="auth-field">
           <label for="suName">이름 <span class="req">*</span></label>
-          <input type="text" id="suName" autocomplete="name" placeholder="본명" />
+          <input type="text" id="suName" autocomplete="name" placeholder="본명 (필수)" required minlength="2" />
         </div>
         <div class="auth-field">
           <label for="suNick">닉네임 <span class="opt">(선택)</span></label>
@@ -556,7 +556,7 @@
         <h2 class="card-title"><span aria-hidden="true">👤</span> 참여자 정보</h2>
         <div class="profile-grid">
           <div class="profile-field">
-            <label for="pName">이름 (본명)</label>
+            <label for="pName">이름 (본명) <span class="req">*</span></label>
             <input type="text" id="pName" placeholder="예: 홍길동" />
           </div>
           <div class="profile-field">

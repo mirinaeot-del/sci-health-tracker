@@ -696,3 +696,5 @@ textarea { resize: vertical; }
 .login-options { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .login-check { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer; }
 .login-check input { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+
+.req { color: var(--danger); }
