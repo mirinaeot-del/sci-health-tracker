@@ -95,9 +95,10 @@
       return global.sb.from("profiles").update(patch).eq("id", cache.userId);
     },
 
-    /* 제3자(비교)에게 보여줄 표시 이름: 닉네임 우선, 없으면 본명 */
+    /* 제3자(비교)에게 보여줄 표시 이름: 닉네임만 사용. 본명은 절대 쓰지 않는다 */
     displayName: function (profileRow) {
-      return (profileRow && (profileRow.nickname || profileRow.name)) || "익명";
+      var nick = profileRow && profileRow.nickname && String(profileRow.nickname).trim();
+      return nick || "익명 참여자";
     },
 
     /* ===== 일일 기록 ===== */
@@ -201,7 +202,8 @@
     },
     // 비교 공유 동의한 사용자들 (본인 포함)
     fetchComparePeers: function () {
-      return global.sb.from("profiles").select("*").eq("share_compare", true)
+      // 이름(name)·아이디(username)는 받아오지 않는다
+      return global.sb.from("profiles").select("id, nickname, injury_level, injury_degree, share_compare").eq("share_compare", true)
         .then(function (r) { return r.data || []; });
     },
 

@@ -110,7 +110,7 @@
         <div class="auth-field">
           <label for="suNick">닉네임 <span class="opt">(선택)</span></label>
           <input type="text" id="suNick" placeholder="다른 참여자에게 표시될 이름" />
-          <p class="field-help">비교에 참여할 때 다른 참여자에게는 <b>닉네임</b>으로 표시됩니다. 닉네임을 비워두면 <b>이름(본명)</b>이 표시되니, 공개가 꺼려지면 닉네임을 입력하세요.</p>
+          <p class="field-help">이름(본명)은 관리자만 볼 수 있습니다. 비교에 참여하면 다른 참여자에게는 <b>닉네임</b>으로 표시되고, 닉네임을 비워두면 <b>익명 참여자</b>로 표시됩니다.</p>
         </div>
         <div class="auth-field">
           <label for="suLevel">손상 레벨 <span class="opt">(선택)</span></label>
@@ -136,7 +136,7 @@
         </div>
         <label class="auth-consent">
           <input type="checkbox" id="suShare" />
-          <span>다른 사람과의 비교 데이터를 보시겠습니까? 동의하면 <b>내 데이터(닉네임·손상레벨·손상정도·기록)도 다른 참여자에게 보여집니다.</b> 닉네임이 설정되어 있지 않으면 <b>본명</b>으로 표시됩니다.</span>
+          <span>다른 사람과의 비교 데이터를 보시겠습니까? 동의하면 <b>내 데이터(닉네임·손상레벨·손상정도·기록)도 다른 참여자에게 보여집니다.</b> 이름(본명)은 공개되지 않으며, 닉네임이 없으면 <b>익명 참여자</b>로 표시됩니다.</span>
         </label>
         <p class="auth-error" id="signupError"></p>
         <button type="submit" class="btn-primary btn-lg auth-submit">회원가입</button>
@@ -564,7 +564,7 @@
             <input type="text" id="pNick" placeholder="다른 참여자에게 표시될 이름" />
           </div>
           <div class="profile-field" style="grid-column:1/-1;">
-            <p class="field-help">🔒 <b>이름(본명)</b>은 본인과 관리자만 볼 수 있어요. 비교에 참여하면 다른 참여자에게는 <b>닉네임</b>이 표시되고, 닉네임을 비워두면 <b>이름(본명)</b>이 표시됩니다.</p>
+            <p class="field-help">🔒 <b>이름(본명)</b>은 본인과 관리자만 볼 수 있어요. 비교에 참여하면 다른 참여자에게는 <b>닉네임</b>이 표시되고, 닉네임을 비워두면 <b>익명 참여자</b>로 표시됩니다.</p>
           </div>
           <div class="profile-field">
             <label for="pId">아이디</label>
@@ -601,7 +601,7 @@
         <h2 class="card-title"><span aria-hidden="true">👥</span> 비교 데이터 공유</h2>
         <label class="auth-consent" style="margin-top:4px;">
           <input type="checkbox" id="profShare" />
-          <span>다른 사람과의 비교 데이터를 보시겠습니까? 동의하면 <b>내 데이터(닉네임·손상레벨·손상정도·기록)도 다른 참여자에게 보여집니다.</b> 닉네임이 설정되어 있지 않으면 <b>본명</b>으로 표시됩니다.</span>
+          <span>다른 사람과의 비교 데이터를 보시겠습니까? 동의하면 <b>내 데이터(닉네임·손상레벨·손상정도·기록)도 다른 참여자에게 보여집니다.</b> 이름(본명)은 공개되지 않으며, 닉네임이 없으면 <b>익명 참여자</b>로 표시됩니다.</span>
         </label>
         <button type="button" class="btn-save" id="saveShareBtn" style="margin-top:14px;">💾 공유 설정 저장</button>
         <p class="save-hint" id="shareHint"></p>
