@@ -1908,7 +1908,7 @@
       e.preventDefault();
       var err = $("#findPwError"), out = $("#findPwResult");
       err.textContent = ""; out.hidden = true;
-      var id = $("#fpId").value.trim(), name = $("#fpName").value.trim(), note = $("#fpNote").value.trim();
+      var id = $("#fpId").value.trim(), name = $("#fpName").value.trim(), note = "";
       if (!id) { err.textContent = "아이디를 입력하세요."; return; }
       if (name.length < 2) { err.textContent = "이름을 2자 이상 입력하세요."; return; }
       Auth.requestPasswordReset(id, name, note).then(function (ok) {
