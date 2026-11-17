@@ -691,3 +691,8 @@ textarea { resize: vertical; }
 .pwreq-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; flex-wrap: wrap; }
 .pwreq-info { font-size: 14px; min-width: 0; }
 .pwreq-temp { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 16px; font-weight: 800; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; letter-spacing: 1px; }
+
+/* ================= 아이디 저장 / 로그인 상태 유지 ================= */
+.login-options { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.login-check { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer; }
+.login-check input { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }

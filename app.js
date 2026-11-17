@@ -1860,6 +1860,33 @@
   }
 
   /* =========================================================
+     아이디 저장 / 로그인 상태 유지
+     - 비밀번호는 기기에 저장하지 않는다 (보안). 대신 로그인 세션을 유지한다.
+     ========================================================= */
+  var SAVED_ID_KEY = "sci:savedLoginId";
+  var KEEP_LOGIN_KEY = "sci:keepLogin";      // "1" 유지 / "0" 해제
+  var SESSION_FLAG = "sci:sessionActive";    // sessionStorage: 이번 브라우저 세션에서 로그인함
+
+  function keepLoginEnabled() { return localStorage.getItem(KEEP_LOGIN_KEY) !== "0"; }
+  function sessionActive() { try { return sessionStorage.getItem(SESSION_FLAG) === "1"; } catch (e) { return false; } }
+  function markSessionActive() { try { sessionStorage.setItem(SESSION_FLAG, "1"); } catch (e) {} }
+
+  /* 로그인 화면을 열 때: 저장된 아이디와 체크 상태 채우기 */
+  function loadLoginChoices() {
+    var saved = localStorage.getItem(SAVED_ID_KEY);
+    if (saved) { $("#loginId").value = saved; $("#saveIdChk").checked = true; }
+    $("#keepLoginChk").checked = keepLoginEnabled();
+  }
+
+  /* 로그인 성공 시: 체크 상태에 따라 아이디 저장 / 세션 유지 설정 */
+  function rememberLoginChoices(id) {
+    if ($("#saveIdChk").checked) localStorage.setItem(SAVED_ID_KEY, id);
+    else localStorage.removeItem(SAVED_ID_KEY);
+    localStorage.setItem(KEEP_LOGIN_KEY, $("#keepLoginChk").checked ? "1" : "0");
+    markSessionActive();
+  }
+
+  /* =========================================================
      아이디 / 비밀번호 찾기
      ========================================================= */
   var AUTH_FORMS = ["loginForm", "signupForm", "findIdForm", "findPwForm"];
@@ -1999,6 +2026,8 @@
       var id = $("#loginId").value.trim(), pw = $("#loginPw").value;
       if (!id || !pw) { err.textContent = "아이디와 비밀번호를 입력하세요."; return; }
       Auth.login(id, pw).then(function () {
+        rememberLoginChoices(id);
+        $("#loginPw").value = "";
         return bootApp();
       }).catch(function (ex) {
         err.textContent = "로그인 실패: 아이디 또는 비밀번호를 확인하세요.";
@@ -2024,6 +2053,7 @@
         // 가입 후 바로 로그인
         return Auth.login(id, pw);
       }).then(function () {
+        markSessionActive();
         // 비교 동의 체크 시 프로필에 반영 (init 후)
         var share = $("#suShare").checked;
         return bootApp().then(function () {
@@ -2093,9 +2123,16 @@
     initAdmin();
     $("#exportBtn").addEventListener("click", exportCSV);
 
+    // 저장된 아이디·로그인 옵션 불러오기
+    loadLoginChoices();
+
     // 세션 확인 → 로그인돼 있으면 앱, 아니면 로그인 화면
     Auth.getSession().then(function (session) {
-      if (session) return bootApp();
+      // "로그인 상태 유지"를 끈 경우: 앱(브라우저)을 새로 열면 다시 로그인
+      if (session && !keepLoginEnabled() && !sessionActive()) {
+        return Auth.logout().then(showAuth);
+      }
+      if (session) { markSessionActive(); return bootApp(); }
       showAuth();
     }).catch(function () { showAuth(); });
   }
