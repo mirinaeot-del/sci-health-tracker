@@ -680,3 +680,14 @@ textarea { resize: vertical; }
 @media (max-width: 720px) {
   .admin-view-banner { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
+
+/* ================= 아이디 / 비밀번호 찾기 ================= */
+.auth-links { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 4px; color: var(--text-muted); font-size: 13px; }
+.auth-links .btn-text { padding: 6px 4px; font-size: 14px; }
+.auth-sub { font-size: 18px; font-weight: 800; }
+.auth-result { background: var(--primary-light); color: var(--primary); border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.7; }
+
+/* 관리자: 비밀번호 재설정 요청 */
+.pwreq-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.pwreq-info { font-size: 14px; min-width: 0; }
+.pwreq-temp { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 16px; font-weight: 800; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; letter-spacing: 1px; }

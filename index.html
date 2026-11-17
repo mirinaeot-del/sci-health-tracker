@@ -50,6 +50,47 @@
         </div>
         <p class="auth-error" id="loginError"></p>
         <button type="submit" class="btn-primary btn-lg auth-submit">로그인</button>
+        <div class="auth-links">
+          <button type="button" class="btn-text" id="openFindId">아이디 찾기</button>
+          <span aria-hidden="true">·</span>
+          <button type="button" class="btn-text" id="openFindPw">비밀번호 찾기</button>
+        </div>
+      </form>
+
+      <!-- 아이디 찾기 -->
+      <form class="auth-form" id="findIdForm" hidden>
+        <h2 class="auth-sub">아이디 찾기</h2>
+        <p class="field-help">가입할 때 입력한 <b>이름</b>을 입력하세요. 개인정보 보호를 위해 아이디 일부는 *로 가려집니다.</p>
+        <div class="auth-field">
+          <label for="fiName">이름</label>
+          <input type="text" id="fiName" autocomplete="name" placeholder="가입 시 입력한 이름" />
+        </div>
+        <p class="auth-error" id="findIdError"></p>
+        <div class="auth-result" id="findIdResult" hidden></div>
+        <button type="submit" class="btn-primary btn-lg auth-submit">아이디 찾기</button>
+        <div class="auth-links"><button type="button" class="btn-text auth-back">← 로그인으로 돌아가기</button></div>
+      </form>
+
+      <!-- 비밀번호 찾기 (관리자에게 재설정 요청) -->
+      <form class="auth-form" id="findPwForm" hidden>
+        <h2 class="auth-sub">비밀번호 찾기</h2>
+        <p class="field-help">아이디와 이름이 일치하면 관리자에게 재설정 요청이 접수됩니다. 관리자가 <b>임시 비밀번호</b>를 알려드리면, 로그인 후 <b>내 정보 → 비밀번호 변경</b>에서 바꿔 주세요.</p>
+        <div class="auth-field">
+          <label for="fpId">아이디</label>
+          <input type="text" id="fpId" autocomplete="username" placeholder="아이디" />
+        </div>
+        <div class="auth-field">
+          <label for="fpName">이름</label>
+          <input type="text" id="fpName" autocomplete="name" placeholder="가입 시 입력한 이름" />
+        </div>
+        <div class="auth-field">
+          <label for="fpNote">연락처 / 메모 <span class="opt">(선택)</span></label>
+          <input type="text" id="fpNote" placeholder="예: 010-0000-0000, 문자로 알려주세요" />
+        </div>
+        <p class="auth-error" id="findPwError"></p>
+        <div class="auth-result" id="findPwResult" hidden></div>
+        <button type="submit" class="btn-primary btn-lg auth-submit">재설정 요청하기</button>
+        <div class="auth-links"><button type="button" class="btn-text auth-back">← 로그인으로 돌아가기</button></div>
       </form>
 
       <!-- 가입 폼 -->
@@ -567,6 +608,23 @@
       </div>
 
       <div class="card">
+        <h2 class="card-title"><span aria-hidden="true">🔒</span> 비밀번호 변경</h2>
+        <p class="card-help">임시 비밀번호를 받았다면 여기서 새 비밀번호로 바꿔 주세요.</p>
+        <div class="profile-grid">
+          <div class="profile-field">
+            <label for="newPw">새 비밀번호</label>
+            <input type="password" id="newPw" autocomplete="new-password" placeholder="6자 이상" />
+          </div>
+          <div class="profile-field">
+            <label for="newPw2">새 비밀번호 확인</label>
+            <input type="password" id="newPw2" autocomplete="new-password" placeholder="한 번 더 입력" />
+          </div>
+        </div>
+        <button type="button" class="btn-save" id="changePwBtn">🔒 비밀번호 변경</button>
+        <p class="save-hint" id="changePwHint"></p>
+      </div>
+
+      <div class="card">
         <h2 class="card-title"><span aria-hidden="true">🎯</span> 나의 목표</h2>
         <p class="card-help">주간 목표를 정하면 월별 분석에서 달성률을 확인할 수 있어요.</p>
         <div class="profile-grid">
@@ -635,6 +693,12 @@
       </div>
 
       <div class="dash-grid" id="adminStats"></div>
+
+      <div class="card" id="pwRequestCard" hidden>
+        <h2 class="card-title"><span aria-hidden="true">🔑</span> 비밀번호 재설정 요청</h2>
+        <p class="card-help">임시 비밀번호를 발급한 뒤 참여자에게 직접 전달해 주세요. 참여자는 로그인 후 내 정보에서 비밀번호를 바꿀 수 있습니다.</p>
+        <div id="pwRequestList"></div>
+      </div>
 
       <div class="card">
         <h2 class="card-title"><span aria-hidden="true">👥</span> 참여자 목록</h2>

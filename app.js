@@ -1437,6 +1437,24 @@
       refreshUserChip();
       toast("정보 저장 완료!");
     });
+    $("#changePwBtn").addEventListener("click", function () {
+      var hint = $("#changePwHint");
+      var p1 = $("#newPw").value, p2 = $("#newPw2").value;
+      if (Store.isViewingOther()) { toast("관리자 보기 모드에서는 변경할 수 없어요"); return; }
+      if (!p1 || p1.length < 6) { hint.textContent = "비밀번호는 6자 이상 입력하세요."; return; }
+      if (p1 !== p2) { hint.textContent = "두 비밀번호가 일치하지 않습니다."; return; }
+      Auth.changePassword(p1).then(function () {
+        $("#newPw").value = ""; $("#newPw2").value = "";
+        hint.textContent = "✓ 비밀번호가 변경되었어요. 다음 로그인부터 새 비밀번호를 사용하세요.";
+        toast("비밀번호 변경 완료!");
+      }).catch(function (ex) {
+        var msg = (ex && ex.message) || "";
+        hint.textContent = /different|same/i.test(msg)
+          ? "기존과 다른 비밀번호를 입력하세요."
+          : "변경에 실패했습니다. 다시 로그인한 뒤 시도해 주세요.";
+        console.error(ex);
+      });
+    });
     $("#saveShareBtn").addEventListener("click", function () {
       Store.saveProfile({ shareCompare: $("#profShare").checked });
       $("#shareHint").textContent = $("#profShare").checked
@@ -1535,6 +1553,7 @@
   }
 
   function renderAdmin() {
+    renderPwRequests();
     var statsBox = $("#adminStats");
     var body = $("#adminUserBody");
     statsBox.innerHTML = "";
@@ -1841,6 +1860,126 @@
   }
 
   /* =========================================================
+     아이디 / 비밀번호 찾기
+     ========================================================= */
+  var AUTH_FORMS = ["loginForm", "signupForm", "findIdForm", "findPwForm"];
+
+  /* 로그인 화면에서 하나의 폼만 보이게 한다 */
+  function showAuthForm(id) {
+    AUTH_FORMS.forEach(function (f) { $("#" + f).hidden = f !== id; });
+    var tabs = document.querySelector(".auth-tabs");
+    if (tabs) tabs.hidden = (id === "findIdForm" || id === "findPwForm");
+    $all(".auth-tab").forEach(function (x) {
+      x.classList.toggle("active", x.getAttribute("data-authtab") === (id === "signupForm" ? "signup" : "login"));
+    });
+  }
+
+  function initAccountRecovery() {
+    $("#openFindId").addEventListener("click", function () { showAuthForm("findIdForm"); });
+    $("#openFindPw").addEventListener("click", function () { showAuthForm("findPwForm"); });
+    $all(".auth-back").forEach(function (b) {
+      b.addEventListener("click", function () { showAuthForm("loginForm"); });
+    });
+
+    // 아이디 찾기
+    $("#findIdForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var err = $("#findIdError"), out = $("#findIdResult");
+      err.textContent = ""; out.hidden = true;
+      var name = $("#fiName").value.trim();
+      if (name.length < 2) { err.textContent = "이름을 2자 이상 입력하세요."; return; }
+      Auth.findUsername(name).then(function (list) {
+        out.hidden = false;
+        if (!list.length) {
+          out.innerHTML = "일치하는 아이디가 없습니다. 이름을 다시 확인하거나 관리자에게 문의해 주세요.";
+          return;
+        }
+        out.innerHTML = "가입된 아이디:<br>" + list.map(function (m) {
+          return "<b>" + escapeHtml(m) + "</b>";
+        }).join("<br>") + '<br><span class="field-help">전체 아이디가 기억나지 않으면 관리자에게 문의해 주세요.</span>';
+      }).catch(function (ex) {
+        err.textContent = "조회에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+        console.error(ex);
+      });
+    });
+
+    // 비밀번호 재설정 요청
+    $("#findPwForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var err = $("#findPwError"), out = $("#findPwResult");
+      err.textContent = ""; out.hidden = true;
+      var id = $("#fpId").value.trim(), name = $("#fpName").value.trim(), note = $("#fpNote").value.trim();
+      if (!id) { err.textContent = "아이디를 입력하세요."; return; }
+      if (name.length < 2) { err.textContent = "이름을 2자 이상 입력하세요."; return; }
+      Auth.requestPasswordReset(id, name, note).then(function (ok) {
+        if (!ok) { err.textContent = "아이디와 이름이 일치하지 않습니다."; return; }
+        out.hidden = false;
+        out.innerHTML = "재설정 요청이 접수되었습니다. 관리자가 확인 후 <b>임시 비밀번호</b>를 알려드립니다.";
+      }).catch(function (ex) {
+        err.textContent = "요청에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+        console.error(ex);
+      });
+    });
+  }
+
+  /* 관리자: 비밀번호 재설정 요청 목록 */
+  function renderPwRequests() {
+    var card = $("#pwRequestCard"), list = $("#pwRequestList");
+    if (!card) return;
+    Store.fetchPasswordRequests().then(function (reqs) {
+      card.hidden = false;
+      list.innerHTML = "";
+      if (!reqs.length) {
+        list.innerHTML = '<p class="card-help">대기 중인 요청이 없습니다.</p>';
+        return;
+      }
+      reqs.forEach(function (rq) {
+        var row = el("div", "pwreq-row");
+        row.innerHTML =
+          '<div class="pwreq-info"><b>' + escapeHtml(rq.username.split("@")[0]) + '</b> · ' + escapeHtml(rq.name || "-") +
+          (rq.note ? ' · ' + escapeHtml(rq.note) : '') +
+          '<div class="field-help">' + fmtDateTime(rq.created_at) + '</div></div>';
+        var btn = el("button", "btn-outline btn-sm", "임시 비밀번호 발급");
+        btn.type = "button";
+        btn.addEventListener("click", function () { issueTempPassword(rq, row); });
+        row.appendChild(btn);
+        list.appendChild(row);
+      });
+    }).catch(function (ex) {
+      card.hidden = false;
+      list.innerHTML = '<p class="card-help">요청 목록을 불러오지 못했습니다. Supabase에서 migration-account-recovery.sql을 실행했는지 확인해 주세요.</p>';
+      console.error(ex);
+    });
+  }
+
+  /* 임시 비밀번호: 영문+숫자 8자 (혼동되는 0/O, 1/l 제외) */
+  function makeTempPassword() {
+    var chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    var arr = new Uint32Array(8);
+    window.crypto.getRandomValues(arr);
+    var s = "";
+    for (var i = 0; i < arr.length; i++) s += chars[arr[i] % chars.length];
+    return s;
+  }
+
+  function issueTempPassword(rq, row) {
+    var userId = rq.username.split("@")[0];
+    if (!confirm(userId + " 계정에 임시 비밀번호를 발급할까요?\n기존 비밀번호는 더 이상 사용할 수 없습니다.")) return;
+    var temp = makeTempPassword();
+    Store.adminResetPassword(rq.username, temp).then(function (ok) {
+      if (!ok) { toast("해당 계정을 찾지 못했습니다"); return; }
+      return Store.markRequestDone(rq.id).then(function () {
+        row.innerHTML = '<div class="pwreq-info"><b>' + escapeHtml(userId) + '</b>의 임시 비밀번호: ' +
+          '<code class="pwreq-temp">' + temp + '</code>' +
+          '<div class="field-help">이 화면을 벗어나면 다시 볼 수 없습니다. 지금 참여자에게 전달해 주세요.</div></div>';
+      });
+    }).catch(function (ex) {
+      toast("발급에 실패했습니다");
+      console.error(ex);
+    });
+  }
+
+  /* =========================================================
      인증 화면 (로그인/가입)
      ========================================================= */
   function initAuthScreen() {
@@ -1849,10 +1988,10 @@
       t.addEventListener("click", function () {
         var tab = t.getAttribute("data-authtab");
         $all(".auth-tab").forEach(function (x) { x.classList.toggle("active", x === t); });
-        $("#loginForm").hidden = tab !== "login";
-        $("#signupForm").hidden = tab !== "signup";
+        showAuthForm(tab === "signup" ? "signupForm" : "loginForm");
       });
     });
+    initAccountRecovery();
     // 로그인
     $("#loginForm").addEventListener("submit", function (e) {
       e.preventDefault();

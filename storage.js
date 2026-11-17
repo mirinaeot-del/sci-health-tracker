@@ -205,6 +205,22 @@
         .then(function (r) { return r.data || []; });
     },
 
+    /* ===== 관리자: 비밀번호 재설정 요청 처리 ===== */
+    fetchPasswordRequests: function () {
+      return global.sb.from("password_requests").select("*").eq("status", "pending")
+        .order("created_at", { ascending: true })
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
+    adminResetPassword: function (username, newPassword) {
+      return global.sb.rpc("admin_reset_password", { p_username: username, p_new_password: newPassword })
+        .then(function (r) { if (r.error) throw r.error; return !!r.data; });
+    },
+    markRequestDone: function (id) {
+      return global.sb.from("password_requests")
+        .update({ status: "done", handled_at: new Date().toISOString() }).eq("id", id)
+        .then(function (r) { if (r.error) throw r.error; });
+    },
+
     /* ===== 관리자 보기 모드: 다른 참여자 데이터로 캐시 임시 교체 ===== */
     // 호출 시 내 캐시를 백업하고, 대상 참여자(profile+records+surveys+goals)로 교체한다.
     viewAsUser: function (profileRow) {

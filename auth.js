@@ -47,6 +47,32 @@
       });
     },
 
+    /* ---- 아이디 찾기: 이름 → 일부 가려진 아이디 목록 ---- */
+    findUsername: function (name) {
+      return global.sb.rpc("find_username", { p_name: name }).then(function (res) {
+        if (res.error) throw res.error;
+        return (res.data || []).map(function (x) { return x.masked; });
+      });
+    },
+
+    /* ---- 비밀번호 재설정 요청 (아이디+이름 일치 시 true) ---- */
+    requestPasswordReset: function (username, name, note) {
+      return global.sb.rpc("request_password_reset", {
+        p_username: idToEmail(username), p_name: name, p_note: note || ""
+      }).then(function (res) {
+        if (res.error) throw res.error;
+        return !!res.data;
+      });
+    },
+
+    /* ---- 로그인 상태에서 비밀번호 변경 ---- */
+    changePassword: function (newPassword) {
+      return global.sb.auth.updateUser({ password: newPassword }).then(function (res) {
+        if (res.error) throw res.error;
+        return true;
+      });
+    },
+
     /* ---- 로그아웃 ---- */
     logout: function () {
       return global.sb.auth.signOut();
